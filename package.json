@@ -1,0 +1,38 @@
+{
+  "name": "harmonization-platform",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "prettier": "^3.6.0",
+    "ts-node": "^10.9.2",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.2",
+    "@wormhole-foundation/sdk": "^2.4.0",
+    "@wormhole-foundation/sdk-evm": "^2.4.0",
+    "@wormhole-foundation/sdk-solana": "^2.4.0",
+    "@wormhole-foundation/sdk-solana-tokenbridge": "^2.4.0",
+    "bs58": "^6.0.0",
+    "dotenv": "^17.0.1",
+    "ethers": "^6.15.0",
+    "fs": "^0.0.1-security"
+  }
+}
