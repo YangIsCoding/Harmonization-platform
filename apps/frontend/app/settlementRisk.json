@@ -1,0 +1,7 @@
+{
+  "symbol": "USDT",
+  "totalCost": 0.15,
+  "waitTime": 32,
+  "priceRange": [0.995, 1.005],
+  "margin": 0.02
+}
