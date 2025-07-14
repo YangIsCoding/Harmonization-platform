@@ -1,0 +1,14 @@
+[
+  {
+    "symbol": "USDT",
+    "score": 6.15,
+    "level": "Medium",
+    "reportUrl": "/reports/USDT-risk-report.pdf"
+  },
+  {
+    "symbol": "USDC",
+    "score": 8.5,
+    "level": "Low",
+    "reportUrl": "/reports/USDC-risk-report.pdf"
+  }
+]

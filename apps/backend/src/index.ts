@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import executeRouter from './routes/execute';
 import quoteRouter from './routes/quote';
+import riskRouter from './routes/risk';
 
 const app = express();
 const PORT = 3001;
@@ -20,6 +21,7 @@ app.use(express.json());
 
 // ✅ API 路由
 app.use('/api/quote', quoteRouter);
+app.use('/api/risk', riskRouter);
 
 // ✅ 健康檢查
 app.get('/', (_, res) => {
