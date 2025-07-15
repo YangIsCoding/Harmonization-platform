@@ -9,18 +9,18 @@ async function getUSDCetUSDCRaydiumQuote(amountIn, slippageBps = 50) {
         if (!data.success) {
             throw new Error(`Raydium API failed: ${data.error || 'Unknown error'}`);
         }
-        quote = data.data;
+        return {
+            amountIn: data.data.inputAmount,
+            amountOut: data.data.outputAmount,
+            priceImpact: data.data.priceImpactPct,
+            fee: data.data.routePlan[0].feeAmount,
+            slippageBps: data.data.slippageBps,
+        };
     } catch (error) {
         console.error('Failed to get Raydium quote:', error);
         throw new Error('Failed to get Raydium quote');
     }
-    return {
-        amountIn: quote.inputAmount,
-        amountOut: quote.outputAmount,
-        priceImpact: quote.priceImpactPct,
-        fee: quote.routePlan[0].feeAmount,
-        slippageBps: quote.slippageBps,
-    };
+
     
 }
 
@@ -41,11 +41,12 @@ async function getUSDCetUSDCRaydiumPriceInit() {
         if (!data.success) {
             throw new Error(`Raydium API failed: ${data.error || 'Unknown error'}`);
         }
+        return data.data.data[0].price;
     } catch (error) {
         console.error('Failed to get Raydium quote:', error);
         throw new Error('Failed to get Raydium quote');
     }
-    return data.data.data[0].price;
+
 }
 
 export default {
