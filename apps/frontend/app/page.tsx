@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { ERC20_ABI, ERC20_BYTECODE } from '../lib/erc20';
 import issuerRisk from './issuerRisk.json';
@@ -44,6 +44,243 @@ function SettlementQuoteSection({ quote }: { quote: SettlementQuote }) {
     </div>
   );
 }
+
+type Quote = {
+  amountOut: number;
+  priceRange: { lower: number; upper: number };
+  depegRisk: { isAtRisk: boolean; oraclePrice: number; deviation: number };
+  bridgeStatus: { status: string; message: string };
+  totalCostUSDT: number;
+  gasCostUSDT: number;
+  solanaFeeUSDT: number;
+  raydiumFee: number;
+  minReceivedAfterSlippage: number;
+  slippageCost: number;
+  timeHorizon: number;
+  ethTxTime: number;
+  bridgeTime: number;
+  solTxTime: number;
+  adjustedVolatility: number;
+  priceImpactManual: number;
+  zScore: number;
+  priceEff: number;
+  priceInit: number;
+  ethGasPrice: number;
+  ethGasLimit: number;
+  gasCostETH: number;
+  volatility: number;
+  // ... add more fields if needed
+};
+
+function formatCurrency(value: number, decimals = 6, currency = 'USD') {
+  if (typeof value !== 'number' || isNaN(value)) return '-';
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function formatTime(seconds: number) {
+  if (typeof seconds !== 'number' || isNaN(seconds)) return '-';
+  if (seconds < 60) return `${seconds.toFixed(2)}s`;
+  if (seconds < 3600) return `${(seconds / 60).toFixed(2)}m`;
+  return `${(seconds / 3600).toFixed(2)}h`;
+}
+
+function formatPercentage(value: number, decimals = 6) {
+  if (typeof value !== 'number' || isNaN(value)) return '-';
+  return `${(value * 100).toFixed(decimals)}%`;
+}
+
+function formatNumber(value: number, decimals = 4) {
+  if (typeof value !== 'number' || isNaN(value)) return '-';
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+const QuoteSummary: React.FC<{
+  amount: string;
+}> = ({ amount }) => {
+  const [loading, setLoading] = useState(false);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const handleGetQuote = async () => {
+    setLoading(true);
+    setError(null);
+    setQuote(null);
+    try {
+      const res = await fetch('/api/risk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountIn: parseFloat(amount) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || res.statusText);
+      }
+      const data = await res.json();
+      setQuote(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch quote');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ textAlign: 'center', marginTop: '16px' }}>
+      <div>
+        <button
+          onClick={handleGetQuote}
+          disabled={loading || !amount || isNaN(Number(amount)) || Number(amount) <= 0}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#ff7b00',
+            color: 'white',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            marginBottom: '12px',
+            opacity: loading ? 0.5 : 1,
+            fontWeight: 'bold',
+          }}
+        >
+          {loading ? 'Calculating...' : 'Get Quote'}
+        </button>
+      </div>
+      {error && (
+        <div style={{ color: 'red', margin: '12px 0' }}>
+          {error}
+        </div>
+      )}
+      {quote && (
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          padding: '20px',
+          margin: '0 auto',
+          maxWidth: 500,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          textAlign: 'left'
+        }}>
+          <h3 style={{ color: '#ff7b00', fontWeight: 600, marginBottom: 8 }}>Quote Summary</h3>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ color: '#888' }}>Output Amount (after Raydium fee): </span>
+            <span style={{ fontWeight: 600 }}>{formatNumber(quote.amountOut)} USDT</span>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ color: '#888' }}>Price Range (95% Confidence): </span>
+            <span style={{ fontWeight: 600, color: '#ffbf00' }}>
+              [{formatNumber(quote.priceRange.lower)} ... {formatNumber(quote.priceRange.upper)}]
+            </span>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ color: '#888' }}>USDT Depeg Risk (0.5%): </span>
+            <span style={{
+              fontWeight: 600,
+              color: quote.depegRisk.isAtRisk ? '#e74c3c' : '#27ae60'
+            }}>
+              {quote.depegRisk.isAtRisk ? 'At Risk' : 'Not At Risk'}
+            </span>
+            <span style={{ color: '#aaa', fontSize: 12, marginLeft: 8 }}>
+              Oracle Price: {quote.depegRisk.oraclePrice} | Deviation: {formatPercentage(quote.depegRisk.deviation)}
+            </span>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ color: '#888' }}>Wormhole Bridge Status: </span>
+            <span style={{
+              fontWeight: 600,
+              color: quote.bridgeStatus.status === 'operational' ? '#27ae60' : '#e74c3c'
+            }}>
+              {quote.bridgeStatus.status.toUpperCase()}
+            </span>
+            <span style={{ color: '#aaa', fontSize: 12, marginLeft: 8 }}>
+              {quote.bridgeStatus.message}
+            </span>
+          </div>
+          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <div>
+            <span style={{ color: '#888' }}>Total Cost (USDT): </span>
+            <span style={{ fontWeight: 600 }}>{formatCurrency(quote.totalCostUSDT)}</span>
+          </div>
+          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
+            └ ETH Gas Cost: {formatCurrency(quote.gasCostUSDT)}<br />
+            └ SOL Fee: {formatCurrency(quote.solanaFeeUSDT)}<br />
+            └ Raydium Fee (0.1%): {formatNumber(quote.raydiumFee)}
+          </div>
+          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <div>
+            <span style={{ color: '#888' }}>Min Received After Slippage: </span>
+            <span style={{ fontWeight: 600 }}>{formatCurrency(quote.minReceivedAfterSlippage)}</span>
+          </div>
+          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
+            └ Slippage Cost (50 bps): {formatCurrency(quote.slippageCost)}
+          </div>
+          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <div>
+            <span style={{ color: '#888' }}>Total Time: </span>
+            <span style={{ fontWeight: 600 }}>~{formatTime(quote.timeHorizon)}</span>
+          </div>
+          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
+            └ ETH Transaction: {formatTime(quote.ethTxTime)}<br />
+            └ Bridge Transfer(estimated): {formatTime(quote.bridgeTime)}<br />
+            └ SOL Settlement: {formatTime(quote.solTxTime)}
+          </div>
+          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <button
+            onClick={() => setShowAdvanced(v => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#4f8ef7',
+              cursor: 'pointer',
+              fontWeight: 500,
+              margin: '8px 0'
+            }}
+          >
+            {showAdvanced ? 'Hide' : 'Show'} Advanced Details
+          </button>
+          {showAdvanced && (
+            <div style={{
+              background: '#f4f4f4',
+              borderRadius: 8,
+              padding: 12,
+              marginTop: 8,
+              fontSize: 14,
+              color: '#333'
+            }}>
+              <div>
+                <b>Pricing Details</b><br />
+                Initial Price(%): {formatNumber(quote.priceInit, 6)}<br />
+                Effective Price(%): {formatNumber(quote.priceEff, 6)}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <b>Gas Details</b><br />
+                ETH Gas Price: {formatNumber(quote.ethGasPrice)} Gwei<br />
+                ETH Gas Limit: {formatNumber(quote.ethGasLimit)}<br />
+                Gas Cost (ETH): {formatNumber(quote.gasCostETH, 6)}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <b>Risk Parameters</b><br />
+                Z-Score: {formatNumber(quote.zScore)}<br />
+                Raw Volatility: {formatPercentage(quote.volatility)}<br />
+                Adjusted Volatility: {formatPercentage(quote.adjustedVolatility)}<br />
+                Price Impact: {formatPercentage(quote.priceImpactManual)}<br />
+                Required Margin: {formatNumber(quote.zScore * quote.adjustedVolatility * quote.priceEff)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -485,13 +722,8 @@ export default function Home() {
 {/* 顯示短期風險與 Execute 按鈕 */}
 {showQuoteUI && (
   <div style={{ textAlign: 'center', marginTop: '16px' }}>
-    <p style={{ fontSize: '1rem', color: '#333' }}>⚠️ This is short term risk</p>
-    <button
-      
-
-         
-        
-      onClick={async () => {
+    <QuoteSummary amount={amountValue} />
+    <button onClick={async () => {
         if (
           !fromChainValue ||
           !toChainValue ||
