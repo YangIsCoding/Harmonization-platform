@@ -1,5 +1,5 @@
-import { spawn } from 'child_process';
-
+const { spawn } = require('child_process');
+const path = require('path');
 class VolatilityService {
     constructor() {
         this.cache = new Map();
@@ -34,7 +34,7 @@ class VolatilityService {
 
     async runPythonGarch(prices) {
         return new Promise((resolve, reject) => {
-            const py = spawn('python3', ['backend/utils/garch_vol.py']);
+            const py = spawn('python3', ['../backend/src/risk_utils/garch_vol.py']);
             let output = '';
             let error = '';
 
@@ -72,7 +72,7 @@ class VolatilityService {
     }
 }
 
-export default new VolatilityService();
+module.exports = new VolatilityService();
 
 
 // async function test() {

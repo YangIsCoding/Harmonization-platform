@@ -1,5 +1,5 @@
-import { Connection, clusterApiUrl, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
-import { Web3 } from 'web3';
+const { Connection, clusterApiUrl, SystemProgram, Keypair, Transaction } = require('@solana/web3.js');
+const { Web3 } = require('web3');
 
 class GasTrackerService {
     constructor() {
@@ -57,10 +57,10 @@ class GasTrackerService {
                 { type: 'address', name: 'spender' },
                 { type: 'uint256', name: 'amount' }
             ]
-        }, [process.env.WORMHOLE_TOKEN_BRIDGE, '1000000000']); // 1000 USDC with 6 decimals
+        }, [process.env.WORMHOLE_TOKEN_BRIDGE, '1000000000']); // 1000 USDT with 6 decimals
         
         const approvalGas = await this.web3.eth.estimateGas({
-            to: process.env.USDC_CONTRACT,
+            to: process.env.USDT_CONTRACT,
             data: approvalData,
             from: '0x0000000000000000000000000000000000000000'
         });
@@ -88,7 +88,7 @@ class GasTrackerService {
             ]
         }, [process.env.WORMHOLE_TOKEN_BRIDGE, amount.toString()]);
         const approvalGas = await this.web3.eth.estimateGas({
-            to: process.env.USDC_CONTRACT,
+            to: process.env.USDT_CONTRACT,
             data: approvalData,
             from: '0x0000000000000000000000000000000000000000'
         });
@@ -147,7 +147,7 @@ class GasTrackerService {
     }
 }
 
-export default new GasTrackerService();
+module.exports = new GasTrackerService();
 
 // async function test() {
 //     // Use a real symbol or a test symbol
