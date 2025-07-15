@@ -1,4 +1,4 @@
-import { BridgeQuote } from '../types'; // 或改成 '@types' 如果 alias 有設定好
+import { BridgeQuote } from '../types';
 
 export async function getMockBridgeQuotes(
   fromChain: string,

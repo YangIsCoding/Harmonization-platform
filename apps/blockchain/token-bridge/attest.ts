@@ -23,6 +23,7 @@ import { getSigner } from './helper';
     console.log(
       `Token already wrapped on ${destChain.chain}. Skipping attestation.`
     );
+    console.log('Wrapped Token Address on Solana:', wrapped.toString()); 
     return { chain: destChain.chain, address: wrapped };
   } catch (e) {
     console.log(
@@ -84,5 +85,9 @@ import { getSigner } from './helper';
     } while (true);
   }
 
-  console.log('Wrapped Asset: ', await waitForIt());
+  const wrappedResult = await waitForIt();
+  console.log('Wrapped Asset Result:', inspect(wrappedResult, { depth: null }));
+  console.log('Chain:', wrappedResult.chain);
+  console.log( 'Wrapped Token Address:', wrappedResult.address );
+  
 })().catch((e) => console.error(e));
