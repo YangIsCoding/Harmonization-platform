@@ -13,6 +13,22 @@ type SettlementQuote = {
   margin: number;
 };
 
+function IssuerRiskSection({ symbol }: { symbol: string }) {
+  const risk = issuerRisk.find(r => r.symbol === symbol);
+
+  if (!risk) return <div>Couldn't find the risk information for {symbol}</div>;
+
+  return (
+    <div>
+      <h2>{risk.symbol} Risk Level: {risk.level}</h2>
+      <p>Risk Score: {risk.score}</p>
+      <a href={risk.reportUrl} download>
+        <button>Download Risk Report</button>
+      </a>
+    </div>
+  );
+}
+
 function SettlementQuoteSection({ quote }: { quote: SettlementQuote }) {
   return (
     <div className="mt-4 border p-4 rounded">
@@ -45,6 +61,8 @@ export default function Home() {
  
   const [showSettlement, setShowSettlement] = useState(false);
   const [ showBridge, setShowBridge ] = useState( false );
+  const [showQuoteUI, setShowQuoteUI] = useState(false);
+  const symbols = issuerRisk.map(r => r.symbol);
   
   
 
@@ -351,102 +369,136 @@ export default function Home() {
 
         {/* Step 3: Transfer */}
         
-<div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
-  <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Step 3: Transfer Through Bridge</h2>
-  <button
-    onClick={fetchQuotes}
-    disabled={!attested || loading === 'quote'}
-    style={{
-      padding: '10px 20px',
-      backgroundColor: '#6b5cd6',
-      color: 'white',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      opacity: !attested || loading === 'quote' ? 0.5 : 1,
-      marginBottom: '16px',
-    }}
-  >
-    {loading === 'quote' ? 'Loading...' : 'Fetch Quotes'}
-  </button>
+        <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Step 3: Transfer Through Bridge</h2>
+          <button
+            onClick={async () =>
+            {
+              console.log('👆 Clicked Fetch');
+              try {
+                await fetchQuotes();
+                setShowQuoteUI(true); // ✅ 成功才設定顯示 UI
+              } catch (err) {
+                console.error('❌ fetchQuotes failed', err);
+                alert('❌ Failed to fetch quotes');
+              }
+            }}
+            disabled={ loading === 'quote'}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#6b5cd6',
+              color: 'white',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              opacity: !attested || loading === 'quote' ? 0.5 : 1,
+              marginBottom: '16px',
+            }}
+          >
+            {loading === 'quote' ? 'Loading...' : 'Fetch Quotes'}
+          </button>
+        </div>
 
-  {/* 📉 Issuer Risk Section */}
-  {quotes.length > 0 && (() => {
-    const issuer = 'USDT'; // 或根據 tokenAddress 對應出 symbol
-    const risk = issuerRisk.find(r => r.symbol === issuer);
-    return risk ? (
-      <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-        <h3>📉 {risk.symbol} Issuer Risk</h3>
-        <p>Risk Level: <strong>{risk.level}</strong></p>
-        <p>Score: {risk.score}</p>
-        <a href={risk.reportUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2bbecf', textDecoration: 'underline' }}>
-          📄 Download Risk Report
-        </a>
-      </div>
-    ) : <p style={{ color: 'gray' }}>No issuer risk info found.</p>;
-  })()}
+        {showQuoteUI && (
+        <main className="p-6 max-w-xl mx-auto">
+          <h1 className="text-2xl font-bold mb-4">🔁 Harmonization Quote</h1>
 
-  {/* 💰 Settlement Quote Section (Mock) */}
-  {quotes.length > 0 && (
-    <div style={{ background: '#f4f4f4', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-      <h3>💰 Settlement Quote (Mock)</h3>
-      <ul style={{ paddingLeft: '20px' }}>
-        <li>Total Cost: 0.15</li>
-        <li>Wait Time: 32 seconds</li>
-        <li>Price Range: 0.995 ~ 1.005</li>
-        <li>Margin: 0.02</li>
-      </ul>
-    </div>
-  )}
+          <div className="mb-4">
+            <label htmlFor="symbol-select" className="mr-2">Select a stablecoin:</label>
+            <select
+              id="symbol-select"
+              value={selectedSymbol}
+              onChange={e => {
+                setSelectedSymbol(e.target.value);
+                setShowSettlement(false);
+                setShowBridge(false);
+                setSelectedBridge('');
+                setQuotes([]);
+                setTxResult(null);
+              }}
+            >
+              <option value="">Select a stablecoin</option>
+              {symbols.map(symbol => (
+                <option key={symbol} value={symbol}>{symbol}</option>
+              ))}
+            </select>
+          </div>
 
-  {/* 🔁 Bridge Quotes */}
-  <div>
-    {quotes.map((q: any, i) => (
-      <div
-        key={i}
-        onClick={() => setSelectedBridge(q.bridge)}
-        style={{
-          padding: '12px',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          marginBottom: '8px',
-          backgroundColor: selectedBridge === q.bridge ? '#e5edff' : '#fafafa',
-          cursor: 'pointer',
-        }}
-      >
-        <strong>{q.bridge}</strong>
-        <p style={{ fontSize: '0.9rem', marginTop: '4px' }}>
-          cost: {q.cost} | slippage: {q.slippage} | risk: {q.riskScore}
-        </p>
-      </div>
-    ))}
-  </div>
+          {selectedSymbol && <IssuerRiskSection symbol={selectedSymbol} />}
 
-  {selectedBridge && (
-    <button
-      onClick={executeTransfer}
-      disabled={loading === 'transfer'}
-      style={{
-        marginTop: '12px',
-        padding: '10px 20px',
-        backgroundColor: '#27ae60',
-        color: 'white',
-        borderRadius: '8px',
-        border: 'none',
-        cursor: 'pointer',
-        opacity: loading === 'transfer' ? 0.5 : 1,
-      }}
-    >
-      {loading === 'transfer' ? 'Transferring...' : `Transfer via ${selectedBridge}`}
-    </button>
-  )}
+          {selectedSymbol && !showSettlement && (
+            <button
+              className="bg-green-600 text-white px-4 py-2 rounded mt-4"
+              onClick={() => setShowSettlement(true)}
+            >
+              Continue Settlement
+            </button>
+          )}
 
-  {txResult && (
-    <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'green' }}>
-      ✅ clearing successed！Tx Hash: <code>{txResult.txHash}</code>
-    </div>
-  )}
-</div>
+          {showSettlement && (
+            <>
+              <SettlementQuoteSection
+                quote={{
+                  symbol: selectedSymbol,
+                  totalCost: 0.15,
+                  waitTime: 32,
+                  priceRange: [0.995, 1.005],
+                  margin: 0.02,
+                }}
+              />
+              {!showBridge && (
+                <button
+                  className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
+                  onClick={() => {
+                    fetchQuotes();
+                    setShowBridge(true);
+                  }}
+                >
+                  Get Bridge Quotes
+                </button>
+              )}
+            </>
+          )}
+
+          {showBridge && (
+            <>
+              <ul className="mt-6 space-y-3">
+                {quotes.map((q: any, i) => (
+                  <li
+                    key={i}
+                    className={`p-4 border rounded cursor-pointer ${
+                      selectedBridge === q.bridge ? 'bg-blue-100 border-blue-500' : ''
+                    }`}
+                    onClick={() => setSelectedBridge(q.bridge)}
+                  >
+                    <strong>{q.bridge}</strong><br />
+                    Cost: {q.cost} | Slippage: {q.slippage} | Risk Score: {q.riskScore}
+                  </li>
+                ))}
+              </ul>
+
+              {selectedBridge && (
+                <div className="mt-4">
+                  <button
+                    onClick={executeTransfer}
+                    className="bg-green-600 text-white px-4 py-2 rounded"
+                  >
+                    Execute {selectedBridge} Settlement
+                  </button>
+                </div>
+              )}
+
+              {txResult && (
+                <div className="mt-6 p-4 bg-gray-100 border rounded">
+                  <p>✅ Settlement Successful!</p>
+                  <p>Bridge: {txResult.bridge}</p>
+                  <p>Transaction Hash: <code>{txResult.txHash}</code></p>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      )}
 
       </div>
     </div>
