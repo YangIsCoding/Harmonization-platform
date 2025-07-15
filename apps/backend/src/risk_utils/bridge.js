@@ -32,7 +32,7 @@ class BridgeTrackerService {
     }
 }
 
-export default new BridgeTrackerService();
+module.exports = new BridgeTrackerService();
 
 // async function test() {
 //     const bridgeTracker = new BridgeTrackerService();

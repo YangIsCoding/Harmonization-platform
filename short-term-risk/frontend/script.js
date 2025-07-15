@@ -115,7 +115,7 @@ function displayQuoteResults(quote) {
         <div class="bg-gray-900/50 p-3 rounded-md text-center my-2">
             <div class="text-gray-400 text-sm">Output Amount (after Raydium fee)</div>
             <div class="text-2xl font-bold text-cyan-300 tracking-wider">
-                ${formatNumber(quote.amountOut)} USDC
+                ${formatNumber(quote.amountOut)} USDT
             </div>
         </div>
         <div class="bg-gray-900/50 p-3 rounded-md text-center my-2">
@@ -125,7 +125,7 @@ function displayQuoteResults(quote) {
             </div>
         </div>
         <div class="bg-gray-900/50 p-3 rounded-md text-center my-2">
-            <div class="text-gray-400 text-sm">USDC Depeg Risk (0.5%)</div>
+            <div class="text-gray-400 text-sm">USDT Depeg Risk (0.5%)</div>
             <div class="text-lg font-bold ${quote.depegRisk.isAtRisk ? 'text-red-300' : 'text-green-300'} tracking-wider">
                 ${quote.depegRisk.isAtRisk ? 'At Risk' : 'Not At Risk'}
             </div>
@@ -143,9 +143,9 @@ function displayQuoteResults(quote) {
             </div>
         </div>
         <hr class="border-gray-700 my-2">
-        ${formatDataRow('Total Cost (USDC)', `<strong>${formatCurrency(quote.totalCostUSDC)}</strong>`)}
-        ${formatDataRow('└ ETH Gas Cost', formatCurrency(quote.gasCostUSDC), true)}
-        ${formatDataRow('└ SOL Fee', formatCurrency(quote.solanaFeeUSDC), true)}
+        ${formatDataRow('Total Cost (USDT)', `<strong>${formatCurrency(quote.totalCostUSDT)}</strong>`)}
+        ${formatDataRow('└ ETH Gas Cost', formatCurrency(quote.gasCostUSDT), true)}
+        ${formatDataRow('└ SOL Fee', formatCurrency(quote.solanaFeeUSDT), true)}
         ${formatDataRow('└ Raydium Fee (0.1%)', formatNumber(quote.raydiumFee), true)}
         <hr class="border-gray-700 my-2">
         ${formatDataRow('Min Received After Slippage', `<strong>${formatCurrency(quote.minReceivedAfterSlippage)}</strong>`)}
@@ -216,7 +216,7 @@ analyzeBtn.addEventListener('click', async () => {
     showLoading();
     try {
         await new Promise(resolve => setTimeout(resolve, 1500));
-        const quote = await getQuoteCost(amountIn); // USDC 6 decimals
+        const quote = await getQuoteCost(amountIn); // USDT 6 decimals
         displayQuoteResults(quote);
     } catch (error) {
         showError(`Failed to calculate quote: ${error.message}`);

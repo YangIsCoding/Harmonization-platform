@@ -1,22 +1,22 @@
-import poolTracker from './pool.js';
-import gasTracker from './gas.js';
-import priceFeeds from './price.js';
-import txTimeService from './txTime.js';
-import volatilityService from './volatility.js';
-import bridgeTracker from './bridge.js';
+const poolTracker = require('./pool.js');
+const gasTracker = require('./gas.js');
+const priceFeeds = require('./price.js');
+const txTimeService = require('./txTime.js');
+const volatilityService = require('./volatility.js');
+const bridgeTracker = require('./bridge.js');
 
-export async function getQuoteCost({ amountIn }) {
-    console.log('amountIn', amountIn);
+async function getQuoteCost(amountIn) {
+    console.log('quote amountIn', amountIn);
 
     // 1. Get real quote from Raydium Trade API
-    const raydiumQuote = await poolTracker.getUSDCetUSDCRaydiumQuote(amountIn);
+    const raydiumQuote = await poolTracker.getUSDTetUSDTRaydiumQuote(amountIn);
     const amountOut = Number(raydiumQuote.amountOut);
     const priceImpact = Number(raydiumQuote.priceImpact);
     const raydiumFee = Number(raydiumQuote.fee);
     const slippageBps = Number(raydiumQuote.slippageBps);
-    const slippageCost = amountIn * slippageBps / 10000; // in USDC
+    const slippageCost = amountIn * slippageBps / 10000; // in USDT
     const priceEff = amountOut / amountIn;
-    const priceInit = await poolTracker.getUSDCetUSDCRaydiumPriceInit();
+    const priceInit = await poolTracker.getUSDTetUSDTRaydiumPriceInit();
     const priceImpactManual = (priceEff - priceInit) / priceInit;
     const minReceivedAfterSlippage = amountOut - slippageCost;
     console.log('amountIn', amountIn);
@@ -44,24 +44,24 @@ export async function getQuoteCost({ amountIn }) {
     const gasCostETH = (ethGasPrice * ethGasLimit) / 1e9; // ETH
     console.log('gasCostETH', gasCostETH);
 
-    // 4. Get live ETH and SOL prices (USDC)
-    const [usdcPriceUSD, ethPriceUSD, solPriceUSD] = await Promise.all([
-        priceFeeds.getUSDCPrice(),
+    // 4. Get live ETH and SOL prices (USDT)
+    const [usdtPriceUSD, ethPriceUSD, solPriceUSD] = await Promise.all([
+        priceFeeds.getUSDTPrice(),
         priceFeeds.getETHPrice(),
         priceFeeds.getSOLPrice()
     ]);
-    console.log('usdcPriceUSD', usdcPriceUSD);
+    console.log('usdtPriceUSD', usdtPriceUSD);
     console.log('ethPriceUSD', ethPriceUSD);
     console.log('solPriceUSD', solPriceUSD);
-    // 5. Gas cost in USDC
-    const gasCostUSDC = gasCostETH * ethPriceUSD * usdcPriceUSD;
-    console.log('gasCostUSDC', gasCostUSDC);
-    // 6. Solana fee in USDC
-    const solanaFeeUSDC = solanaFee * solPriceUSD * usdcPriceUSD;
-    console.log('solanaFeeUSDC', solanaFeeUSDC);
-    // 7. Total cost in USDC
-    const totalCostUSDC = gasCostUSDC + solanaFeeUSDC + raydiumFee;
-    console.log('totalCostUSDC', totalCostUSDC);
+    // 5. Gas cost in USDT
+    const gasCostUSDT = gasCostETH * ethPriceUSD * usdtPriceUSD;
+    console.log('gasCostUSDT', gasCostUSDT);
+    // 6. Solana fee in USDT
+    const solanaFeeUSDT = solanaFee * solPriceUSD * usdtPriceUSD;
+    console.log('solanaFeeUSDT', solanaFeeUSDT);
+    // 7. Total cost in USDT
+    const totalCostUSDT = gasCostUSDT + solanaFeeUSDT + raydiumFee;
+    console.log('totalCostUSDT', totalCostUSDT);
     // 8. Use actual tx time services
     const [ethTxTime, solTxTime] = await Promise.all([
         txTimeService.estimateETHTxTime(ethGasPrice),
@@ -74,7 +74,7 @@ export async function getQuoteCost({ amountIn }) {
     console.log('bridgeTime', bridgeTime);
     console.log('totalTimeSec', totalTimeSec);
     // 9. Volatility and price range (no fallback)
-    const volatility = await volatilityService.getGARCHVolatility('usd-coin', totalTimeSec);
+    const volatility = await volatilityService.getGARCHVolatility('tether', totalTimeSec);
     const zScore = 2;
     const adjustedVolatility = volatility * priceEff;
     console.log('totalTimeSec', totalTimeSec);
@@ -97,9 +97,9 @@ export async function getQuoteCost({ amountIn }) {
         priceInit,
         slippageCost,
         minReceivedAfterSlippage,
-        gasCostUSDC,
-        solanaFeeUSDC,
-        totalCostUSDC,
+        gasCostUSDT,
+        solanaFeeUSDT,
+        totalCostUSDT,
         gasCostETH,
         priceImpact,
         priceImpactManual,
@@ -121,11 +121,14 @@ export async function getQuoteCost({ amountIn }) {
     };
 }
 
+module.exports = {
+    getQuoteCost,
+};
 // --- Example: Integration usage ---
 
 // async function testQuoteCost() {
 //   // 1. Get real pool reserves
-//   const quote = await getQuoteCost({ amountIn: 1000000});
+//   const quote = await getQuoteCost({ amountIn: 1000});
 //   console.log(quote);
 // }
 // testQuoteCost().catch(err => {

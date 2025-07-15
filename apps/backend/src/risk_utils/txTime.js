@@ -1,5 +1,5 @@
-import { Connection, clusterApiUrl } from '@solana/web3.js';
-import { Alchemy, Network } from 'alchemy-sdk';
+const { Connection, clusterApiUrl } = require('@solana/web3.js');
+const { Alchemy, Network } = require('alchemy-sdk');
 
 const alchemy = new Alchemy({
     apiKey: process.env.ALCHEMY_API_KEY,
@@ -63,7 +63,7 @@ class TxTimeService {
     }
 }
 
-export default new TxTimeService();
+module.exports = new TxTimeService();
 
 // async function test() {
 //     process.env.ETHERSCAN_API_KEY = '***REMOVED***';
