@@ -5,6 +5,8 @@ import { ethers } from 'ethers';
 import { ERC20_ABI, ERC20_BYTECODE } from '../lib/erc20';
 import issuerRisk from './issuerRisk.json';
 
+
+
 type SettlementQuote = {
   symbol: string;
   totalCost: number;
@@ -58,6 +60,14 @@ export default function Home() {
   const [selectedSymbol, setSelectedSymbol] = useState('USDT'); // 預設用 USDT
   const [showRiskInfo, setShowRiskInfo] = useState(false);
   const [ showSettlementInfo, setShowSettlementInfo ] = useState( false );
+  const [fromChainValue, setFromChainValue] = useState('Ethereum');
+  const [toChainValue, setToChainValue] = useState('Solana');
+  const [amountValue, setAmountValue] = useState('');
+  const [erc20Address, setErc20Address] = useState('');
+  const [splAddress, setSplAddress] = useState('');
+  const [fromAccountInput, setFromAccountInput] = useState('');
+  const [toAccountInput, setToAccountInput] = useState('');
+
  
   const [showSettlement, setShowSettlement] = useState(false);
   const [ showBridge, setShowBridge ] = useState( false );
@@ -169,67 +179,6 @@ export default function Home() {
     } catch (err) {
       console.error(err);
       alert('❌ Attest failed');
-    } finally {
-      setLoading('');
-    }
-  };
-  
-
-  const fetchQuotes = async () => {
-    try {
-      setLoading('quote');
-      
-      const res = await fetch('http://localhost:3001/api/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromChain: 'Ethereum',
-          toChain: 'Solana',
-          amount: 100,
-        }),
-      });
-  
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('❌ Backend responded with error:', errorText);
-        throw new Error(`Fetch failed with status ${res.status}`);
-      }
-  
-      const data = await res.json();
-      console.log('✅ Quotes received:', data);
-  
-      setQuotes(data);
-      setTxResult(null);
-      setShowRiskInfo(true);
-      setShowSettlementInfo(true);
-    } catch (err) {
-      console.error('❌ Error while fetching quotes:', err);
-      alert('❌ failed to fetch quotes — see console');
-    } finally {
-      setLoading('');
-    }
-  };
-  
-  
-  
-
-  const executeTransfer = async () => {
-    try {
-      setLoading('transfer');
-      const res = await fetch('http://localhost:3001/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bridge: selectedBridge,
-          fromChain: 'Ethereum',
-          toChain: 'Solana',
-          amount: 100,
-        }),
-      });
-      const data = await res.json();
-      setTxResult(data);
-    } catch {
-      alert('❌ failed to execute transfer');
     } finally {
       setLoading('');
     }
@@ -367,138 +316,249 @@ export default function Home() {
   )}
 </div>
 
-        {/* Step 3: Transfer */}
-        
-        <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Step 3: Transfer Through Bridge</h2>
-          <button
-            onClick={async () =>
-            {
-              console.log('👆 Clicked Fetch');
-              try {
-                await fetchQuotes();
-                setShowQuoteUI(true); // ✅ 成功才設定顯示 UI
-              } catch (err) {
-                console.error('❌ fetchQuotes failed', err);
-                alert('❌ Failed to fetch quotes');
-              }
-            }}
-            disabled={ loading === 'quote'}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#6b5cd6',
-              color: 'white',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: !attested || loading === 'quote' ? 0.5 : 1,
-              marginBottom: '16px',
-            }}
-          >
-            {loading === 'quote' ? 'Loading...' : 'Fetch Quotes'}
-          </button>
-        </div>
+       {/* Step 3: Transfer */}
+<hr style={{ margin: '40px 0', border: 'none', borderTop: '1px solid #ccc' }} />
 
-        {showQuoteUI && (
-        <main className="p-6 max-w-xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4">🔁 Harmonization Quote</h1>
+<div
+  style={{
+    background: '#fff',
+    padding: '24px',
+    borderRadius: '12px',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+    marginBottom: '24px',
+  }}
+>
+  <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Step 3: Transfer</h2>
 
-          <div className="mb-4">
-            <label htmlFor="symbol-select" className="mr-2">Select a stablecoin:</label>
+  {/* Select Coin */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>Select Coin</label>
+    <select
+      value={selectedSymbol}
+      onChange={(e) => setSelectedSymbol(e.target.value)}
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+    >
+      <option value="USDT">USDT</option>
+      <option value="USDC">USDC</option>
+    </select>
+  </div>
+
+  {/* From Chain */}
+  <div style={{ marginBottom: '12px' }}>
+  <label style={{ fontWeight: 'bold' }}>From Chain</label>
+  <select
+    value={fromChainValue}
+    onChange={(e) => setFromChainValue(e.target.value)}
+    style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+  >
+    <option value="Ethereum">Ethereum</option>
+    <option value="Solana">Solana</option>
+  </select>
+</div>
+  {/* To Chain */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>To Chain</label>
             <select
-              id="symbol-select"
-              value={selectedSymbol}
-              onChange={e => {
-                setSelectedSymbol(e.target.value);
-                setShowSettlement(false);
-                setShowBridge(false);
-                setSelectedBridge('');
-                setQuotes([]);
-                setTxResult(null);
-              }}
+             value={toChainValue}
+             onChange={(e) => setToChainValue(e.target.value)}
+              style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
             >
-              <option value="">Select a stablecoin</option>
-              {symbols.map(symbol => (
-                <option key={symbol} value={symbol}>{symbol}</option>
-              ))}
-            </select>
-          </div>
+      <option value="Ethereum">Ethereum</option>
+      <option value="Solana">Solana</option>
+    </select>
+  </div>
 
-          {selectedSymbol && <IssuerRiskSection symbol={selectedSymbol} />}
+  {/* Amount */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>Amount</label>
+    <input
+              type="number"
+              value={amountValue}
+              onChange={(e) => setAmountValue(e.target.value)}
+      placeholder="Enter amount"
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+    />
+  </div>
 
-          {selectedSymbol && !showSettlement && (
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded mt-4"
-              onClick={() => setShowSettlement(true)}
-            >
-              Continue Settlement
-            </button>
-          )}
+  {/* ERC20 Address */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>ERC-20 Address</label>
+    <input
+              type="text"
+              value={erc20Address}
+              onChange={(e) => setErc20Address(e.target.value)}
+      placeholder="0x..."
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', fontFamily: 'monospace' }}
+    />
+  </div>
 
-          {showSettlement && (
-            <>
-              <SettlementQuoteSection
-                quote={{
-                  symbol: selectedSymbol,
-                  totalCost: 0.15,
-                  waitTime: 32,
-                  priceRange: [0.995, 1.005],
-                  margin: 0.02,
-                }}
-              />
-              {!showBridge && (
-                <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
-                  onClick={() => {
-                    fetchQuotes();
-                    setShowBridge(true);
-                  }}
-                >
-                  Get Bridge Quotes
-                </button>
-              )}
-            </>
-          )}
+  {/* SPL Address */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>SPL Token Address</label>
+    <input
+      type="text"
+      value={splAddress}
+      onChange={(e) => setSplAddress(e.target.value)}
+      placeholder="Enter SPL Address"
+      style={{
+        width: '100%',
+        padding: '8px',
+        borderRadius: '8px',
+        border: '1px solid #ccc',
+        marginTop: '4px',
+        fontFamily: 'monospace',
+      }}
+    />
+  </div>
 
-          {showBridge && (
-            <>
-              <ul className="mt-6 space-y-3">
-                {quotes.map((q: any, i) => (
-                  <li
-                    key={i}
-                    className={`p-4 border rounded cursor-pointer ${
-                      selectedBridge === q.bridge ? 'bg-blue-100 border-blue-500' : ''
-                    }`}
-                    onClick={() => setSelectedBridge(q.bridge)}
-                  >
-                    <strong>{q.bridge}</strong><br />
-                    Cost: {q.cost} | Slippage: {q.slippage} | Risk Score: {q.riskScore}
-                  </li>
-                ))}
-              </ul>
+  {/* From Account */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>From Account</label>
+    <input
+              type="text"
+              value={fromAccountInput}
+              onChange={(e) => setFromAccountInput(e.target.value)}
+      placeholder="Enter source account"
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+    />
+  </div>
 
-              {selectedBridge && (
-                <div className="mt-4">
-                  <button
-                    onClick={executeTransfer}
-                    className="bg-green-600 text-white px-4 py-2 rounded"
-                  >
-                    Execute {selectedBridge} Settlement
-                  </button>
-                </div>
-              )}
+  {/* To Account */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>To Account</label>
+    <input
+              type="text"
+              value={toAccountInput}
+              onChange={(e) => setToAccountInput(e.target.value)}
+      placeholder="Enter destination account"
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+    />
+  </div>
 
-              {txResult && (
-                <div className="mt-6 p-4 bg-gray-100 border rounded">
-                  <p>✅ Settlement Successful!</p>
-                  <p>Bridge: {txResult.bridge}</p>
-                  <p>Transaction Hash: <code>{txResult.txHash}</code></p>
-                </div>
-              )}
-            </>
-          )}
-        </main>
-      )}
+  {/* Bridge Selection */}
+  <div style={{ marginBottom: '12px' }}>
+    <label style={{ fontWeight: 'bold' }}>Select Bridge</label>
+    <select
+      value={selectedBridge}
+      onChange={(e) => setSelectedBridge(e.target.value)}
+      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+    >
+      <option value="">-- Select Bridge --</option>
+      <option value="wormhole">Wormhole</option>
+    </select>
+  </div>
+
+  {/* See Long Term Risk and Short Term Risk */}
+<div style={{ textAlign: 'center', marginTop: '24px' }}>
+  {/* 長期風險 */}
+  <button
+    onClick={() => setShowRiskInfo(true)}
+    style={{
+      padding: '10px 20px',
+      backgroundColor: '#ff7b00',
+      color: 'white',
+      borderRadius: '8px',
+      border: 'none',
+      cursor: 'pointer',
+      marginRight: '12px',
+    }}
+  >
+    📉 Download long term risk report
+  </button>
+
+  {/* 短期風險 */}
+  <button
+    onClick={() => setShowQuoteUI(true)}
+    style={{
+      padding: '10px 20px',
+      backgroundColor: '#ff7b00',
+      color: 'white',
+      borderRadius: '8px',
+      border: 'none',
+      cursor: 'pointer',
+    }}
+  >
+    📉 See risk and cost of this transaction 
+  </button>
+</div>
+
+{/* 顯示短期風險與 Execute 按鈕 */}
+{showQuoteUI && (
+  <div style={{ textAlign: 'center', marginTop: '16px' }}>
+    <p style={{ fontSize: '1rem', color: '#333' }}>⚠️ This is short term risk</p>
+    <button
+      
+
+         
+        
+      onClick={async () => {
+        if (
+          !fromChainValue ||
+          !toChainValue ||
+          !erc20Address ||
+          !amountValue ||
+          !fromAccountInput ||
+          !toAccountInput ||
+          !selectedBridge
+        ) {
+          alert('❌ 請填寫所有欄位！');
+          return;
+        }
+      
+        setLoading('transfer');
+        try {
+          const res = await fetch('/api/manual-transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromChain: fromChainValue,
+              toChain: toChainValue,
+              tokenAddress: erc20Address,
+              amount: amountValue,
+              fromAccount: fromAccountInput,
+              toAccount: toAccountInput,
+              bridge: selectedBridge,
+            }),
+          });
+      
+          const data = await res.json();
+          if (res.ok) {
+            console.log('Transfer Done:', data);
+            setTxResult(data);
+            alert('✅ Transfer succeeded!');
+          } else {
+            alert(`❌ Transfer failed: ${data.message}`);
+          }
+        } catch (err) {
+          console.error('Transfer Error:', err);
+          alert('❌ Transfer request failed');
+        } finally {
+          setLoading('');
+        }
+      }}
+      
+      style={{
+        padding: '10px 20px',
+        backgroundColor: '#007bff',
+        color: 'white',
+        borderRadius: '8px',
+        border: 'none',
+        cursor: 'pointer',
+        marginTop: '10px',
+      }}
+              >
+                
+      🚀 Execute
+    </button>
+  </div>
+)}
+
+
+
+</div>
+
+        
+        
 
       </div>
     </div>
