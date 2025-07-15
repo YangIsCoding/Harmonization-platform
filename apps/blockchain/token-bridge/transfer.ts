@@ -17,8 +17,8 @@ import { getSigner, getTokenDecimals } from './helper';
   const destination = await getSigner(rcvChain);
 
   // Define the token and amount to transfer
-  const tokenId = Wormhole.tokenId(sendChain.chain, '0x6fc891097e0049d160c82614c069688cdef81378');
-  const amt = '10';
+  const tokenId = Wormhole.tokenId(sendChain.chain, '0xFeB685D97Ae31998eaD197C4335c2ff921a0b4CB');
+  const amt = '77';
 
   // Convert to raw units based on token decimals
   const decimals = await getTokenDecimals(wh, tokenId, sendChain);
