@@ -17,6 +17,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 驗證 Ethereum 地址格式
+    if (!tokenAddress.startsWith('0x') || tokenAddress.length !== 42) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid token address format', 
+          message: 'Ethereum address must be 42 characters long and start with 0x (e.g., 0x1234...abcd)' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // 檢查是否為有效的十六進制字符
+    const hexPattern = /^0x[0-9a-fA-F]{40}$/;
+    if (!hexPattern.test(tokenAddress)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid token address format', 
+          message: 'Token address contains invalid characters. Only hexadecimal characters (0-9, a-f, A-F) are allowed.' 
+        },
+        { status: 400 }
+      );
+    }
+
     const wh = await wormhole('Testnet', [evm, solana, sui]);
     const srcChain = wh.getChain('Sepolia');
     const destChain = wh.getChain('Solana');
@@ -32,8 +55,10 @@ export async function POST(req: NextRequest) {
         
       console.log(`✅ Token already wrapped on ${destChain.chain}:`, wrapped);
       return NextResponse.json({
-        status: 'alreadyWrapped',
+        status: 'success',
         wrappedTokenAddress: wrapped,
+        message: 'Token already attested and wrapped successfully',
+        alreadyWrapped: true
       });
     } catch {
       console.log(`🔄 No wrapped token found on ${destChain.chain}. Attesting...`);
@@ -53,31 +78,75 @@ export async function POST(req: NextRequest) {
     const txid = txids[0]!.txid;
     console.log('📦 Attestation tx sent. Hash:', txid);
     
-    // 立即返回 transaction hash，讓前端可以顯示
-    // 但仍需要繼續等待 VAA 生成
-    console.log('🚀 Returning immediate tx hash to frontend:', txid);
+    // 檢查是否已經有 wrapped token（如果有的話，立即返回）
+    try {
+      const existingWrapped = await tbDest.getWrappedAsset(token);
+      console.log('✅ Token already wrapped, returning immediately');
+      return NextResponse.json({
+        attestTxHash: txid,
+        wrappedTokenAddress: existingWrapped,
+        status: 'success',
+        message: 'Transaction submitted, token already wrapped'
+      });
+    } catch {
+      console.log('🔄 Token not wrapped yet, proceeding with full attestation process');
+    }
 
+    // 解析交易以獲取 Wormhole 訊息
+    console.log('📋 Parsing transaction to get Wormhole message...');
     const msgs = await srcChain.parseTransaction(txid);
-    const vaa = await wh.getVaa(msgs[0]!, 'TokenBridge:AttestMeta', 25 * 60 * 1000);
-    if (!vaa) throw new Error('❌ VAA not found after waiting');
+    console.log('Parsed Messages:', msgs);
 
+    if (!msgs || msgs.length === 0) {
+      throw new Error('No Wormhole messages found in transaction');
+    }
+
+    // 等待 Guardian 網絡生成 VAA
+    console.log('⏳ Waiting for Guardian network to generate VAA...');
+    const timeout = 25 * 60 * 1000; // 25 分鐘超時
+    const vaa = await wh.getVaa(msgs[0]!, 'TokenBridge:AttestMeta', timeout);
+    
+    if (!vaa) {
+      throw new Error('VAA not found after timeout. Guardian network processing may be delayed.');
+    }
+
+    console.log('✅ VAA received! Token Address:', vaa.payload.token.address);
+
+    // 在目標鏈提交 attestation
+    console.log('🔗 Submitting attestation on destination chain...');
     const subAttestation = tbDest.submitAttestation(
       vaa,
       Wormhole.parseAddress(destSigner.chain(), destSigner.address())
     );
 
-    const tsx = await signSendWait(destChain, subAttestation, destSigner);
-    console.log('✅ Attestation on Solana done. Tx:', tsx);
+    const destTxids = await signSendWait(destChain, subAttestation, destSigner);
+    console.log('🎯 Destination chain transaction:', destTxids);
 
-    // ✅ 再次取得 wrapped token address
-    const wrapped = await tbDest.getWrappedAsset(token);
+    // 輪詢等待包裝資產生成
+    console.log('🔄 Polling for wrapped asset creation...');
+    let attempts = 0;
+    const maxAttempts = 30; // 最多嘗試 30 次，每次間隔 2 秒
 
-    return NextResponse.json({
-      attestTxHash: txid,  // Ethereum attestation tx hash
-      solanaSubmissionHash: tsx[0]?.txid || 'unknown',  // Solana submission tx hash
-      wrappedTokenAddress: wrapped,
-      status: 'success',
-    });
+    while (attempts < maxAttempts) {
+      try {
+        const wrapped = await tbDest.getWrappedAsset(token);
+        console.log('🎉 Wrapped asset created successfully:', wrapped);
+        
+        return NextResponse.json({
+          attestTxHash: txid,
+          wrappedTokenAddress: wrapped,
+          status: 'success',
+          message: 'Token attestation completed successfully',
+        });
+      } catch {
+        attempts++;
+        console.log(`⏳ Wrapped asset not ready yet (attempt ${attempts}/${maxAttempts}), waiting...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    // 如果經過所有嘗試仍未成功，返回中間狀態
+    throw new Error('Wrapped asset creation timed out after maximum attempts');
 
   } catch (e: any) {
     console.error('🔥 Attestation failed:', e);
