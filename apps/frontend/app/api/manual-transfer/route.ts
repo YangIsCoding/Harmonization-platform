@@ -7,6 +7,18 @@ import { getSigner, getTokenDecimals } from '../../../../blockchain/token-bridge
 
 export async function POST(req: Request) {
   try {
+    // 從請求中獲取參數
+    const body = await req.json();
+    const { tokenID, amt, fromChain, toChain, bridge } = body;
+
+    // 驗證必要參數
+    if (!tokenID || !amt) {
+      return NextResponse.json({ 
+        success: false, 
+        error: '缺少必要參數: tokenID 和 amt' 
+      }, { status: 400 });
+    }
+
     const wh = await wormhole('Testnet', [solana, evm]);
 
     const sendChain = wh.getChain('Sepolia');
@@ -15,10 +27,10 @@ export async function POST(req: Request) {
     const source = await getSigner(sendChain);
     const destination = await getSigner(rcvChain);
 
-    const tokenId = Wormhole.tokenId(sendChain.chain, '0xFeB685D97Ae31998eaD197C4335c2ff921a0b4CB');
-    const amt = '77';
+    // 使用從前端傳遞的參數
+    const tokenId = Wormhole.tokenId(sendChain.chain, tokenID);
     const decimals = await getTokenDecimals(wh, tokenId, sendChain);
-    const transferAmount = amount.units(amount.parse(amt, decimals));
+    const transferAmount = amount.units(amount.parse(amt.toString(), decimals));
 
     const automatic = false;
     const nativeGas = automatic ? amount.units(amount.parse('0.0', 6)) : 0n;

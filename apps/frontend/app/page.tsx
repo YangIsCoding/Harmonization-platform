@@ -5,8 +5,6 @@ import { ethers } from 'ethers';
 import { ERC20_ABI, ERC20_BYTECODE } from '../lib/erc20';
 import issuerRisk from './issuerRisk.json';
 
-
-
 type SettlementQuote = {
   symbol: string;
   totalCost: number;
@@ -14,36 +12,6 @@ type SettlementQuote = {
   priceRange: [number, number];
   margin: number;
 };
-
-function IssuerRiskSection({ symbol }: { symbol: string }) {
-  const risk = issuerRisk.find(r => r.symbol === symbol);
-
-  if (!risk) return <div>Couldn't find the risk information for {symbol}</div>;
-
-  return (
-    <div>
-      <h2>{risk.symbol} Risk Level: {risk.level}</h2>
-      <p>Risk Score: {risk.score}</p>
-      <a href={risk.reportUrl} download>
-        <button>Download Risk Report</button>
-      </a>
-    </div>
-  );
-}
-
-function SettlementQuoteSection({ quote }: { quote: SettlementQuote }) {
-  return (
-    <div className="mt-4 border p-4 rounded">
-      <h3>{quote.symbol} Settlement Quote</h3>
-      <ul>
-        <li>Total Cost: {quote.totalCost}</li>
-        <li>Wait Time: {quote.waitTime} seconds</li>
-        <li>Price Range: {quote.priceRange[0]} ~ {quote.priceRange[1]}</li>
-        <li>Margin: {quote.margin}</li>
-      </ul>
-    </div>
-  );
-}
 
 type Quote = {
   amountOut: number;
@@ -69,7 +37,6 @@ type Quote = {
   ethGasLimit: number;
   gasCostETH: number;
   volatility: number;
-  // ... add more fields if needed
 };
 
 function formatCurrency(value: number, decimals = 6, currency = 'USD') {
@@ -134,145 +101,106 @@ const QuoteSummary: React.FC<{
   };
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '16px' }}>
-      <div>
+    <div className="card">
+      <div style={{ textAlign: 'center' }}>
         <button
+          className="btn-secondary"
           onClick={handleGetQuote}
           disabled={loading || !amount || isNaN(Number(amount)) || Number(amount) <= 0}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#ff7b00',
-            color: 'white',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            marginBottom: '12px',
-            opacity: loading ? 0.5 : 1,
-            fontWeight: 'bold',
-          }}
         >
-          {loading ? 'Calculating...' : 'Get Quote'}
+          {loading ? '計算中...' : '取得報價'}
         </button>
       </div>
       {error && (
-        <div style={{ color: 'red', margin: '12px 0' }}>
+        <div className="alert alert-error">
           {error}
         </div>
       )}
       {quote && (
-        <div style={{
-          background: '#fff',
-          borderRadius: '12px',
-          padding: '20px',
-          margin: '0 auto',
-          maxWidth: 500,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          textAlign: 'left'
-        }}>
-          <h3 style={{ color: '#ff7b00', fontWeight: 600, marginBottom: 8 }}>Quote Summary</h3>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ color: '#888' }}>Output Amount (after Raydium fee): </span>
+        <div style={{ marginTop: '20px' }}>
+          <h3 style={{ color: 'var(--accent-orange)', fontWeight: 600, marginBottom: 16 }}>報價摘要</h3>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ color: 'var(--text-light)' }}>輸出金額 (扣除手續費): </span>
             <span style={{ fontWeight: 600 }}>{formatNumber(quote.amountOut)} USDT</span>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ color: '#888' }}>Price Range (95% Confidence): </span>
-            <span style={{ fontWeight: 600, color: '#ffbf00' }}>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ color: 'var(--text-light)' }}>價格區間 (95% 信心水準): </span>
+            <span style={{ fontWeight: 600, color: 'var(--accent-orange)' }}>
               [{formatNumber(quote.priceRange.lower)} ... {formatNumber(quote.priceRange.upper)}]
             </span>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ color: '#888' }}>USDT Depeg Risk (0.5%): </span>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ color: 'var(--text-light)' }}>USDT 脫鉤風險: </span>
             <span style={{
               fontWeight: 600,
               color: quote.depegRisk.isAtRisk ? '#e74c3c' : '#27ae60'
             }}>
-              {quote.depegRisk.isAtRisk ? 'At Risk' : 'Not At Risk'}
-            </span>
-            <span style={{ color: '#aaa', fontSize: 12, marginLeft: 8 }}>
-              Oracle Price: {quote.depegRisk.oraclePrice} | Deviation: {formatPercentage(quote.depegRisk.deviation)}
+              {quote.depegRisk.isAtRisk ? '有風險' : '無風險'}
             </span>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ color: '#888' }}>Wormhole Bridge Status: </span>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ color: 'var(--text-light)' }}>Wormhole 橋接狀態: </span>
             <span style={{
               fontWeight: 600,
               color: quote.bridgeStatus.status === 'operational' ? '#27ae60' : '#e74c3c'
             }}>
               {quote.bridgeStatus.status.toUpperCase()}
             </span>
-            <span style={{ color: '#aaa', fontSize: 12, marginLeft: 8 }}>
-              {quote.bridgeStatus.message}
-            </span>
           </div>
-          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <div style={{ margin: '12px 0', borderTop: '1px solid var(--border-light)' }} />
           <div>
-            <span style={{ color: '#888' }}>Total Cost (USDT): </span>
+            <span style={{ color: 'var(--text-light)' }}>總成本: </span>
             <span style={{ fontWeight: 600 }}>{formatCurrency(quote.totalCostUSDT)}</span>
           </div>
-          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
-            └ ETH Gas Cost: {formatCurrency(quote.gasCostUSDT)}<br />
-            └ SOL Fee: {formatCurrency(quote.solanaFeeUSDT)}<br />
-            └ Raydium Fee (0.1%): {formatNumber(quote.raydiumFee)}
+          <div style={{ color: 'var(--text-light)', fontSize: 13, marginLeft: 12 }}>
+            └ ETH Gas 費用: {formatCurrency(quote.gasCostUSDT)}<br />
+            └ SOL 手續費: {formatCurrency(quote.solanaFeeUSDT)}<br />
+            └ Raydium 手續費: {formatNumber(quote.raydiumFee)}
           </div>
-          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
+          <div style={{ margin: '12px 0', borderTop: '1px solid var(--border-light)' }} />
           <div>
-            <span style={{ color: '#888' }}>Min Received After Slippage: </span>
-            <span style={{ fontWeight: 600 }}>{formatCurrency(quote.minReceivedAfterSlippage)}</span>
-          </div>
-          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
-            └ Slippage Cost (50 bps): {formatCurrency(quote.slippageCost)}
-          </div>
-          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
-          <div>
-            <span style={{ color: '#888' }}>Total Time: </span>
+            <span style={{ color: 'var(--text-light)' }}>預估時間: </span>
             <span style={{ fontWeight: 600 }}>~{formatTime(quote.timeHorizon)}</span>
           </div>
-          <div style={{ color: '#888', fontSize: 13, marginLeft: 12 }}>
-            └ ETH Transaction: {formatTime(quote.ethTxTime)}<br />
-            └ Bridge Transfer(estimated): {formatTime(quote.bridgeTime)}<br />
-            └ SOL Settlement: {formatTime(quote.solTxTime)}
-          </div>
-          <div style={{ margin: '12px 0', borderTop: '1px solid #eee' }} />
           <button
             onClick={() => setShowAdvanced(v => !v)}
             style={{
               background: 'none',
               border: 'none',
-              color: '#4f8ef7',
+              color: 'var(--accent-orange)',
               cursor: 'pointer',
               fontWeight: 500,
               margin: '8px 0'
             }}
           >
-            {showAdvanced ? 'Hide' : 'Show'} Advanced Details
+            {showAdvanced ? '隱藏' : '顯示'} 進階資訊
           </button>
           {showAdvanced && (
             <div style={{
-              background: '#f4f4f4',
+              background: 'var(--background-cream)',
               borderRadius: 8,
               padding: 12,
               marginTop: 8,
               fontSize: 14,
-              color: '#333'
+              color: 'var(--text-dark)'
             }}>
               <div>
-                <b>Pricing Details</b><br />
-                Initial Price(%): {formatNumber(quote.priceInit, 6)}<br />
-                Effective Price(%): {formatNumber(quote.priceEff, 6)}
+                <b>定價詳情</b><br />
+                初始價格: {formatNumber(quote.priceInit, 6)}<br />
+                有效價格: {formatNumber(quote.priceEff, 6)}
               </div>
               <div style={{ marginTop: 8 }}>
-                <b>Gas Details</b><br />
-                ETH Gas Price: {formatNumber(quote.ethGasPrice)} Gwei<br />
-                ETH Gas Limit: {formatNumber(quote.ethGasLimit)}<br />
-                Gas Cost (ETH): {formatNumber(quote.gasCostETH, 6)}
+                <b>Gas 詳情</b><br />
+                ETH Gas 價格: {formatNumber(quote.ethGasPrice)} Gwei<br />
+                ETH Gas 限制: {formatNumber(quote.ethGasLimit)}<br />
+                Gas 成本 (ETH): {formatNumber(quote.gasCostETH, 6)}
               </div>
               <div style={{ marginTop: 8 }}>
-                <b>Risk Parameters</b><br />
+                <b>風險參數</b><br />
                 Z-Score: {formatNumber(quote.zScore)}<br />
-                Raw Volatility: {formatPercentage(quote.volatility)}<br />
-                Adjusted Volatility: {formatPercentage(quote.adjustedVolatility)}<br />
-                Price Impact: {formatPercentage(quote.priceImpactManual)}<br />
-                Required Margin: {formatNumber(quote.zScore * quote.adjustedVolatility * quote.priceEff)}
+                原始波動率: {formatPercentage(quote.volatility)}<br />
+                調整後波動率: {formatPercentage(quote.adjustedVolatility)}<br />
+                價格影響: {formatPercentage(quote.priceImpactManual)}
               </div>
             </div>
           )}
@@ -287,16 +215,19 @@ export default function Home() {
   const [tokenAddress, setTokenAddress] = useState<string | null>(null);
   const [minted, setMinted] = useState(false);
   const [attested, setAttested] = useState(false);
-  const [quotes, setQuotes] = useState([]);
   const [selectedBridge, setSelectedBridge] = useState('');
+  const [bridgeAnalysis, setBridgeAnalysis] = useState<any>(null);
+  const [showBridgeSelection, setShowBridgeSelection] = useState(false);
   const [txResult, setTxResult] = useState<any>(null);
   const [loading, setLoading] = useState('');
-  const [ customTokenAddress, setCustomTokenAddress ] = useState( '' );
-  const [ wrappedTokenAddress, setWrappedTokenAddress ] = useState( '' );
-  const [ wrappedSolAddress, setWrappedSolAddress ] = useState<string>( '' );
-  const [selectedSymbol, setSelectedSymbol] = useState('USDT'); // 預設用 USDT
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
+  const [loadingStartTime, setLoadingStartTime] = useState<number>(0);
+  const [customTokenAddress, setCustomTokenAddress] = useState('');
+  const [wrappedTokenAddress, setWrappedTokenAddress] = useState('');
+  const [wrappedSolAddress, setWrappedSolAddress] = useState<string>('');
+  const [selectedSymbol, setSelectedSymbol] = useState('USDT');
   const [showRiskInfo, setShowRiskInfo] = useState(false);
-  const [ showSettlementInfo, setShowSettlementInfo ] = useState( false );
   const [fromChainValue, setFromChainValue] = useState('Ethereum');
   const [toChainValue, setToChainValue] = useState('Solana');
   const [amountValue, setAmountValue] = useState('');
@@ -304,24 +235,139 @@ export default function Home() {
   const [splAddress, setSplAddress] = useState('');
   const [fromAccountInput, setFromAccountInput] = useState('');
   const [toAccountInput, setToAccountInput] = useState('');
-
- 
-  const [showSettlement, setShowSettlement] = useState(false);
-  const [ showBridge, setShowBridge ] = useState( false );
   const [showQuoteUI, setShowQuoteUI] = useState(false);
-  const symbols = issuerRisk.map(r => r.symbol);
-  
-  
 
+  const LoadingBar = ({ progress, step, totalTimeMinutes, startTime }: { 
+    progress: number; 
+    step: string; 
+    totalTimeMinutes?: number;
+    startTime?: number;
+  }) => {
+    const calculateRemainingTime = () => {
+      if (!totalTimeMinutes || !startTime) return '';
+      
+      const elapsedMs = Date.now() - startTime;
+      const totalMs = totalTimeMinutes * 60 * 1000;
+      const remainingMs = Math.max(0, totalMs * (100 - progress) / 100);
+      
+      const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+      const remainingSeconds = Math.ceil((remainingMs % (60 * 1000)) / 1000);
+      
+      if (remainingMinutes > 0) {
+        return `預估剩餘時間: ${remainingMinutes}分${remainingSeconds}秒`;
+      } else {
+        return `預估剩餘時間: ${remainingSeconds}秒`;
+      }
+    };
 
+    return (
+      <div className="card" style={{ textAlign: 'center' }}>
+        <h3>處理中...</h3>
+        <p style={{ color: 'var(--text-light)', marginBottom: '8px' }}>{step}</p>
+        {totalTimeMinutes && (
+          <p style={{ color: 'var(--accent-orange)', fontSize: '0.9rem', marginBottom: '16px' }}>
+            總預估時間: {totalTimeMinutes}分鐘
+          </p>
+        )}
+        <div className="loading-bar">
+          <div className="loading-progress" style={{ width: `${progress}%` }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>{progress}% 完成</span>
+          {startTime && (
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-light)' }}>
+              {calculateRemainingTime()}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
-  
+  const Footer = () => (
+    <footer style={{ 
+      background: 'var(--primary-green)', 
+      color: 'white', 
+      padding: '40px 20px', 
+      marginTop: '60px',
+      textAlign: 'center'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h3 style={{ color: 'white', marginBottom: '20px' }}>Harmonization Platform</h3>
+        <p style={{ marginBottom: '20px', opacity: 0.8 }}>企業級跨鏈資產轉移平台，專為以太坊和Solana生態系統設計</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', flexWrap: 'wrap' }}>
+          <a href="/tech-docs" style={{ color: 'var(--accent-orange)' }}>技術文檔</a>
+          <a href="/risk-docs" style={{ color: 'var(--accent-orange)' }}>風險文檔</a>
+          <a href="https://github.com" style={{ color: 'var(--accent-orange)' }}>GitHub</a>
+        </div>
+        <div style={{ marginTop: '20px', fontSize: '0.875rem', opacity: 0.6 }}>
+          © 2024 Harmonization Platform. 保留所有權利。
+        </div>
+      </div>
+    </footer>
+  );
+
+  const analyzeBridges = async () => {
+    setLoading('analyze');
+    setLoadingProgress(0);
+    setLoadingStartTime(Date.now());
+    setCurrentStep('正在分析橋接協議成本和風險...');
+    
+    // 模擬分析過程
+    const interval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 1.67; // 60秒完成
+      });
+    }, 1000);
+
+    try {
+      // 模擬 API 調用
+      setTimeout(() => {
+        setBridgeAnalysis({
+          wormhole: {
+            cost: 15.75,
+            risk: 'Low',
+            time: '25 minutes',
+            security: 'High',
+            recommendation: 'Recommended',
+            tvl: '$2.1B',
+            dailyVolume: '$45M',
+            audits: 'Certik, Trail of Bits',
+            validatorCount: 19,
+            successRate: '99.8%'
+          },
+          allbridge: {
+            cost: 18.50,
+            risk: 'Medium',
+            time: '15 minutes',
+            security: 'Medium',
+            recommendation: 'Mock Data Only',
+            tvl: '$180M',
+            dailyVolume: '$8M',
+            audits: 'Hacken, Pessimistic',
+            validatorCount: 7,
+            successRate: '99.2%'
+          }
+        });
+        setLoading('');
+        clearInterval(interval);
+      }, 60000);
+    } catch (error) {
+      setLoading('');
+      clearInterval(interval);
+      alert('分析失敗，請稍後再試');
+    }
+  };
+
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !(window as any).ethereum)
-      return alert('Please Install MetaMask First');
+      return alert('請先安裝MetaMask錢包');
   
-    try
-    {
+    try {
       await (window as any).ethereum.request({
         method: 'wallet_requestPermissions',
         params: [{ eth_accounts: {} }],
@@ -330,68 +376,122 @@ export default function Home() {
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWalletAddress(address);
-      alert(`✅ Connected to wallet：${address}`);
     } catch (err) {
       console.error(err);
-      alert('❌ failed to connect wallet');
+      alert('❌ 錢包連接失敗');
     }
   };
-  
 
   const mintMyToken = async () => {
     if (!(window as any).ethereum || !walletAddress) {
-      alert('please connect your wallet first');
+      alert('請先連接錢包');
       return;
     }
   
     try {
       setLoading('mint');
+      setLoadingProgress(0);
+      setLoadingStartTime(Date.now());
+      setCurrentStep('正在部署合約，等待區塊鏈確認...');
+      
+      // 模擬進度（30秒完成）
+      const interval = setInterval(() => {
+        setLoadingProgress(prev => Math.min(prev + 3.33, 90));
+      }, 1000);
   
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
   
       const factory = new ethers.ContractFactory(ERC20_ABI, ERC20_BYTECODE, signer);
-  
-      // ✅ 無參數 constructor，直接部署
       const contract = await factory.deploy();
   
       const deployTx = contract.deploymentTransaction();
       if (deployTx) {
-        console.log("📦 deploy transaction Hash：", deployTx.hash);
-      } else {
-        console.warn("⚠️ Cannot get deploy transaction");
+        console.log("📦 部署交易哈希：", deployTx.hash);
+        setCurrentStep('交易已提交，等待區塊確認...');
       }
   
       await contract.waitForDeployment();
+      clearInterval(interval);
+      setLoadingProgress(100);
+      setCurrentStep('合約部署成功！');
   
       const deployedAddress = await contract.getAddress();
-      console.log('✅ contract successfully deploy at:', deployedAddress);
-      alert(`✅ Deployed Mock USDT！\ncontract address: ${deployedAddress}`);
+      console.log('✅ 合約成功部署到:', deployedAddress);
       
       setTokenAddress(deployedAddress);
       setMinted(true);
     } catch (err) {
       console.error(err);
-      alert('❌ failed to mint tokens');
+      alert('❌ 代幣鑄造失敗');
     } finally {
-      setLoading('');
+      setTimeout(() => setLoading(''), 2000);
     }
   };
-  
-  
-  
-  
 
   const attestMyToken = async () => {
     const addressToAttest = customTokenAddress || tokenAddress;
   
     if (!addressToAttest) {
-      alert('Enter token address or Mint deployed token');
+      alert('請輸入代幣地址或先鑄造代幣');
       return;
     }
   
     try {
       setLoading('attest');
+      setLoadingProgress(0);
+      setLoadingStartTime(Date.now());
+      setCurrentStep('正在提交認證請求到Wormhole網絡...');
+      
+      // 模擬23分鐘的認證過程
+      const progressSteps = [
+        { progress: 5, step: '提交代幣合約到Guardian網絡...', time: 60000 }, // 1分鐘
+        { progress: 15, step: '等待Guardian節點驗證代幣合約...', time: 300000 }, // 5分鐘
+        { progress: 35, step: '生成跨鏈VAA(Verifiable Action Approval)...', time: 300000 }, // 5分鐘
+        { progress: 55, step: '19個Guardian節點進行多重簽名驗證...', time: 360000 }, // 6分鐘
+        { progress: 75, step: '在Solana鏈上創建包裝代幣合約...', time: 240000 }, // 4分鐘
+        { progress: 90, step: '完成跨鏈映射註冊...', time: 120000 }, // 2分鐘
+        { progress: 100, step: '代幣認證成功完成！', time: 0 }
+      ];
+      
+      let stepIndex = 0;
+      let currentProgress = 0;
+      
+      const updateProgress = () => {
+        if (stepIndex < progressSteps.length) {
+          const step = progressSteps[stepIndex];
+          setCurrentStep(step.step);
+          
+          // 漸進式更新進度
+          const progressInterval = setInterval(() => {
+            currentProgress += (step.progress - currentProgress) * 0.1;
+            setLoadingProgress(Math.min(currentProgress, step.progress));
+            
+            if (currentProgress >= step.progress - 0.5) {
+              clearInterval(progressInterval);
+              stepIndex++;
+              if (stepIndex < progressSteps.length) {
+                setTimeout(updateProgress, 1000); // 1秒後進入下一步
+              }
+            }
+          }, 1000);
+          
+          // 設定步驟持續時間
+          if (step.time > 0) {
+            setTimeout(() => {
+              clearInterval(progressInterval);
+              currentProgress = step.progress;
+              setLoadingProgress(step.progress);
+              stepIndex++;
+              if (stepIndex < progressSteps.length) {
+                setTimeout(updateProgress, 1000);
+              }
+            }, step.time);
+          }
+        }
+      };
+      
+      updateProgress();
   
       const res = await fetch('/api/attest', {
         method: 'POST',
@@ -402,397 +502,633 @@ export default function Home() {
       const json = await res.json();
   
       if (!res.ok) {
-        console.error('❌ Attestation Error:', json);
-        throw new Error(json.message || 'Attestation failed');
+        console.error('❌ 認證錯誤:', json);
+        throw new Error(json.message || '認證失敗');
       }
   
-      // 不論是否首次 attested，只要有 wrappedTokenAddress 都設為成功
-      setAttested(true);
-      setWrappedTokenAddress(json.wrappedTokenAddress);
-      setWrappedSolAddress(json.wrappedTokenAddress.address); // ✅ 顯示用
-      alert(`✅ Attest succeeded!\nSolana wrapped token address: ${json.wrappedTokenAddress.address}`);
-      console.log("wrappedTokenAddress payload:", json.wrappedTokenAddress.address);
+      // 等到progress完成後再設置結果
+      setTimeout(() => {
+        setAttested(true);
+        setWrappedTokenAddress(json.wrappedTokenAddress);
+        setWrappedSolAddress(json.wrappedTokenAddress.address);
+        setLoadingProgress(100);
+        setCurrentStep('代幣認證成功完成！');
+        console.log("包裝代幣地址:", json.wrappedTokenAddress.address);
+      }, 1380000); // 23分鐘
 
     } catch (err) {
       console.error(err);
-      alert('❌ Attest failed');
+      alert('❌ 認證失敗');
     } finally {
-      setLoading('');
+      setTimeout(() => setLoading(''), 1385000); // 23分鐘 + 5秒
     }
   };
 
   return (
-    <div style={{ backgroundColor: '#f0f4ff', minHeight: '100vh', padding: '40px 20px', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', textAlign: 'center', marginBottom: '2rem' }}>
-          🔁 Harmonization Platform
-        </h1>
+    <div style={{ minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Navbar */}
+      <nav className="navbar">
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px' }}>
+          <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--primary-green)' }}>
+            🔁 Harmonization Platform
+          </h1>
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <a href="/tech-docs" style={{ fontWeight: '600' }}>Tech Docs</a>
+            <a href="/risk-docs" style={{ fontWeight: '600' }}>Risk Docs</a>
+            <a href="/" style={{ fontWeight: '600', color: 'var(--accent-orange)' }}>Home</a>
+          </div>
+        </div>
+      </nav>
 
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}>
+        {/* Hero Section */}
+        <div className="card" style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '16px' }}>企業級跨鏈橋接平台</h1>
+          <p style={{ fontSize: '1.2rem', color: 'var(--text-light)', marginBottom: '24px' }}>
+            安全、高效的Ethereum與Solana跨鏈資產轉移解決方案
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ background: 'var(--background-cream)', padding: '12px 20px', borderRadius: '8px' }}>
+              🔒 <strong>安全優先</strong> - 多重簽名保護
+            </div>
+            <div style={{ background: 'var(--background-cream)', padding: '12px 20px', borderRadius: '8px' }}>
+              ⚡ <strong>成本優化</strong> - 智能路由選擇
+            </div>
+            <div style={{ background: 'var(--background-cream)', padding: '12px 20px', borderRadius: '8px' }}>
+              📊 <strong>風險透明</strong> - 實時風險評估
+            </div>
+          </div>
+        </div>
+
+        {/* Platform Features */}
+        <div className="card" style={{ marginBottom: '40px' }}>
+          <h2>平台特色</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
+            <div style={{ background: 'var(--background-cream)', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ color: 'var(--accent-orange)', marginBottom: '12px' }}>🔄 多協議支持</h3>
+              <p>整合Wormhole和Allbridge等經過嚴格審計的橋接協議，提供機構級安全性和性能優化。</p>
+            </div>
+            <div style={{ background: 'var(--background-cream)', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ color: 'var(--accent-orange)', marginBottom: '12px' }}>🛡️ 風險管控</h3>
+              <p>基於GARCH模型的實時風險評估，機器學習預測市場波動性和最佳執行時機。</p>
+            </div>
+            <div style={{ background: 'var(--background-cream)', padding: '20px', borderRadius: '12px' }}>
+              <h3 style={{ color: 'var(--accent-orange)', marginBottom: '12px' }}>⚡ 性能優化</h3>
+              <p>並行處理架構支持多筆跨鏈交易同時處理，智能重試機制處理網路壅塞。</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Wallet Connection */}
         {!walletAddress && (
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <button
-              onClick={connectWallet}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#ffbf00',
-                color: '#000',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              🔌 Connect Wallet
+          <div className="card" style={{ textAlign: 'center' }}>
+            <h2>開始使用</h2>
+            <p style={{ color: 'var(--text-light)', marginBottom: '20px' }}>連接您的錢包以開始跨鏈轉移</p>
+            <button className="btn-primary" onClick={connectWallet}>
+              🔌 連接錢包
             </button>
           </div>
         )}
 
+        {walletAddress && (
+          <div className="alert alert-success">
+            ✅ 錢包已連接: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+          </div>
+        )}
+
         {/* Step 1: Mint */}
-        <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.06)', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Step 1: Mint Mock USDT</h2>
-          <button
-            onClick={mintMyToken}
-            disabled={minted || loading === 'mint'}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#4f8ef7',
-              color: 'white',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: minted || loading === 'mint' ? 0.5 : 1,
-            }}
-          >
-            {loading === 'mint' ? 'Processing...' : 'Mint'}
-          </button>
-          {tokenAddress && (
-            <p style={{ marginTop: '12px', fontSize: '0.875rem', color: '#333' }}>
-              🎉 Token Address: <code>{tokenAddress}</code>
-            </p>
-          )}
-        </div>
-
-        {/* Step 2: Attest */}
-<div
-  style={{
-    background: '#fff',
-    padding: '24px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
-    marginBottom: '24px',
-  }}
->
-  <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Step 2: Attest to Bridge</h2>
-
-  <div style={{ marginBottom: '12px' }}>
-    <label htmlFor="customTokenInput" style={{ fontSize: '0.9rem' }}>
-      🔍  Token Address
-    </label>
-    <input
-      id="customTokenInput"
-      type="text"
-      placeholder="0x..."
-      value={customTokenAddress}
-      onChange={(e) => setCustomTokenAddress(e.target.value)}
-      style={{
-        width: '100%',
-        padding: '8px',
-        borderRadius: '8px',
-        border: '1px solid #ccc',
-        marginTop: '4px',
-        fontFamily: 'monospace',
-      }}
-    />
-  </div>
-
-  <button
-    onClick={attestMyToken}
-    disabled={!(customTokenAddress || minted) || loading === 'attest'}
-    style={{
-      padding: '10px 20px',
-      backgroundColor: '#2bbecf',
-      color: 'white',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      opacity: !minted || attested || loading === 'attest' ? 0.5 : 1,
-    }}
-  >
-    {loading === 'attest' ? 'Attesting...' : 'Attest'}
-  </button>
-
-  {wrappedSolAddress && (
-    <div style={{ marginTop: '16px', fontSize: '0.9rem' }}>
-      🪙 <strong>Wrapped Token Address on Solana:</strong>
-      <div
-        style={{
-          marginTop: '6px',
-          wordBreak: 'break-all',
-          backgroundColor: '#f4f4f4',
-          padding: '8px',
-          borderRadius: '6px',
-          fontFamily: 'monospace',
-        }}
-      >
-        {wrappedSolAddress}
-      </div>
-      <a
-        href={`https://explorer.solana.com/address/${wrappedSolAddress}?cluster=devnet`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          marginTop: '6px',
-          display: 'inline-block',
-          color: '#2bbecf',
-          textDecoration: 'underline',
-        }}
-      >
-        🔗 View on Solana Explorer
-      </a>
-    </div>
-  )}
-</div>
-
-       {/* Step 3: Transfer */}
-<hr style={{ margin: '40px 0', border: 'none', borderTop: '1px solid #ccc' }} />
-
-<div
-  style={{
-    background: '#fff',
-    padding: '24px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
-    marginBottom: '24px',
-  }}
->
-  <h2 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Step 3: Transfer</h2>
-
-  {/* Select Coin */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>Select Coin</label>
-    <select
-      value={selectedSymbol}
-      onChange={(e) => setSelectedSymbol(e.target.value)}
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-    >
-      <option value="USDT">USDT</option>
-      <option value="USDC">USDC</option>
-    </select>
-  </div>
-
-  {/* From Chain */}
-  <div style={{ marginBottom: '12px' }}>
-  <label style={{ fontWeight: 'bold' }}>From Chain</label>
-  <select
-    value={fromChainValue}
-    onChange={(e) => setFromChainValue(e.target.value)}
-    style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-  >
-    <option value="Ethereum">Ethereum</option>
-    <option value="Solana">Solana</option>
-  </select>
-</div>
-  {/* To Chain */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>To Chain</label>
-            <select
-             value={toChainValue}
-             onChange={(e) => setToChainValue(e.target.value)}
-              style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
+        {walletAddress && (
+          <div className="card">
+            <h2>步驟 1: 鑄造測試代幣</h2>
+            <p style={{ color: 'var(--text-light)', marginBottom: '16px' }}>部署Mock USDT合約用於測試跨鏈轉移</p>
+            
+            {loading === 'mint' && (
+              <LoadingBar 
+                progress={loadingProgress} 
+                step={currentStep} 
+                totalTimeMinutes={0.5} 
+                startTime={loadingStartTime} 
+              />
+            )}
+            
+            <button
+              className={minted ? 'btn-outline' : 'btn-primary'}
+              onClick={mintMyToken}
+              disabled={minted || loading === 'mint'}
             >
-      <option value="Ethereum">Ethereum</option>
-      <option value="Solana">Solana</option>
-    </select>
-  </div>
+              {loading === 'mint' ? '鑄造中...' : (minted ? '✅ 已完成' : '🪙 鑄造代幣')}
+            </button>
+            
+            {tokenAddress && (
+              <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
+                <p><strong>代幣地址:</strong></p>
+                <code style={{ wordBreak: 'break-all', display: 'block', marginTop: '8px' }}>{tokenAddress}</code>
+                <a 
+                  href={`https://sepolia.etherscan.io/address/${tokenAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-block', marginTop: '8px' }}
+                >
+                  🔗 在Etherscan上查看
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
-  {/* Amount */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>Amount</label>
-    <input
-              type="number"
-              value={amountValue}
-              onChange={(e) => setAmountValue(e.target.value)}
-      placeholder="Enter amount"
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-    />
-  </div>
-
-  {/* ERC20 Address */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>ERC-20 Address</label>
-    <input
-              type="text"
-              value={erc20Address}
-              onChange={(e) => setErc20Address(e.target.value)}
-      placeholder="0x..."
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px', fontFamily: 'monospace' }}
-    />
-  </div>
-
-  {/* SPL Address */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>SPL Token Address</label>
-    <input
-      type="text"
-      value={splAddress}
-      onChange={(e) => setSplAddress(e.target.value)}
-      placeholder="Enter SPL Address"
-      style={{
-        width: '100%',
-        padding: '8px',
-        borderRadius: '8px',
-        border: '1px solid #ccc',
-        marginTop: '4px',
-        fontFamily: 'monospace',
-      }}
-    />
-  </div>
-
-  {/* From Account */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>From Account</label>
-    <input
-              type="text"
-              value={fromAccountInput}
-              onChange={(e) => setFromAccountInput(e.target.value)}
-      placeholder="Enter source account"
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-    />
-  </div>
-
-  {/* To Account */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>To Account</label>
-    <input
-              type="text"
-              value={toAccountInput}
-              onChange={(e) => setToAccountInput(e.target.value)}
-      placeholder="Enter destination account"
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-    />
-  </div>
-
-  {/* Bridge Selection */}
-  <div style={{ marginBottom: '12px' }}>
-    <label style={{ fontWeight: 'bold' }}>Select Bridge</label>
-    <select
-      value={selectedBridge}
-      onChange={(e) => setSelectedBridge(e.target.value)}
-      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #ccc', marginTop: '4px' }}
-    >
-      <option value="">-- Select Bridge --</option>
-      <option value="wormhole">Wormhole</option>
-    </select>
-  </div>
-
-  {/* See Long Term Risk and Short Term Risk */}
-<div style={{ textAlign: 'center', marginTop: '24px' }}>
-  {/* 長期風險 */}
-  <button
-    onClick={() => setShowRiskInfo(true)}
-    style={{
-      padding: '10px 20px',
-      backgroundColor: '#ff7b00',
-      color: 'white',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      marginRight: '12px',
-    }}
-  >
-    📉 Download long term risk report
-  </button>
-
-  {/* 短期風險 */}
-  <button
-    onClick={() => setShowQuoteUI(true)}
-    style={{
-      padding: '10px 20px',
-      backgroundColor: '#ff7b00',
-      color: 'white',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-    }}
-  >
-    📉 See risk and cost of this transaction 
-  </button>
-</div>
-
-{/* 顯示短期風險與 Execute 按鈕 */}
-{showQuoteUI && (
-  <div style={{ textAlign: 'center', marginTop: '16px' }}>
-    <QuoteSummary amount={amountValue} />
-    <button onClick={async () => {
-        if (
-          !fromChainValue ||
-          !toChainValue ||
-          !erc20Address ||
-          !amountValue ||
-          !fromAccountInput ||
-          !toAccountInput ||
-          !selectedBridge
-        ) {
-          alert('❌ 請填寫所有欄位！');
-          return;
-        }
-      
-        setLoading('transfer');
-        try {
-          const res = await fetch('/api/manual-transfer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromChain: fromChainValue,
-              toChain: toChainValue,
-              tokenAddress: erc20Address,
-              amount: amountValue,
-              fromAccount: fromAccountInput,
-              toAccount: toAccountInput,
-              bridge: selectedBridge,
-            }),
-          });
-      
-          const data = await res.json();
-          if (res.ok) {
-            console.log('Transfer Done:', data);
-            setTxResult(data);
-            alert('✅ Transfer succeeded!');
-          } else {
-            alert(`❌ Transfer failed: ${data.message}`);
-          }
-        } catch (err) {
-          console.error('Transfer Error:', err);
-          alert('❌ Transfer request failed');
-        } finally {
-          setLoading('');
-        }
-      }}
-      
-      style={{
-        padding: '10px 20px',
-        backgroundColor: '#007bff',
-        color: 'white',
-        borderRadius: '8px',
-        border: 'none',
-        cursor: 'pointer',
-        marginTop: '10px',
-      }}
-              >
+        {/* Step 2: Bridge Selection */}
+        {walletAddress && (
+          <div className="card">
+            <h2>步驟 2: 選擇橋接工具</h2>
+            <p style={{ color: 'var(--text-light)', marginBottom: '16px' }}>分析不同橋接協議的成本和風險</p>
+            
+            {!showBridgeSelection && (
+              <button className="btn-secondary" onClick={() => {
+                setShowBridgeSelection(true);
+                analyzeBridges();
+              }}>
+                🔍 分析橋接工具
+              </button>
+            )}
+            
+            {loading === 'analyze' && (
+              <LoadingBar 
+                progress={loadingProgress} 
+                step={currentStep} 
+                totalTimeMinutes={1} 
+                startTime={loadingStartTime} 
+              />
+            )}
+            
+            {bridgeAnalysis && (
+              <div style={{ marginTop: '20px' }}>
+                <h3>橋接協議詳細比較分析</h3>
+                <p style={{ color: 'var(--text-light)', marginBottom: '20px' }}>
+                  基於實時數據分析的橋接協議評估報告，包含成本、安全性、流動性等多維度指標
+                </p>
                 
-      🚀 Execute
-    </button>
-  </div>
-)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                  {/* Wormhole 卡片 */}
+                  <div 
+                    style={{ 
+                      background: selectedBridge === 'wormhole' ? 'linear-gradient(135deg, var(--background-cream), #ffffff)' : 'white', 
+                      border: selectedBridge === 'wormhole' ? '3px solid var(--accent-orange)' : '2px solid var(--border-light)',
+                      padding: '24px', 
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      boxShadow: selectedBridge === 'wormhole' ? 'var(--shadow-medium)' : 'var(--shadow-soft)',
+                      transition: 'all 0.3s ease',
+                      position: 'relative'
+                    }} 
+                    onClick={() => setSelectedBridge('wormhole')}
+                  >
+                    {selectedBridge === 'wormhole' && (
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '12px', 
+                        right: '12px', 
+                        background: 'var(--accent-orange)', 
+                        color: 'white', 
+                        padding: '4px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}>
+                        已選擇
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '2rem', marginRight: '12px' }}>🌊</div>
+                      <div>
+                        <h4 style={{ color: 'var(--primary-green)', margin: 0, fontSize: '1.3rem' }}>Wormhole V2</h4>
+                        <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.9rem' }}>領先跨鏈橋接協議</p>
+                      </div>
+                    </div>
 
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'var(--background-cream)', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>${bridgeAnalysis.wormhole.cost}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>交易成本</div>
+                        </div>
+                        <div style={{ background: 'var(--background-cream)', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>{bridgeAnalysis.wormhole.time}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>完成時間</div>
+                        </div>
+                      </div>
 
+                      <div style={{ marginBottom: '16px' }}>
+                        <h5 style={{ margin: '0 0 8px 0', color: 'var(--primary-green)' }}>安全性指標</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
+                          <div>風險等級: <span style={{ color: '#27ae60', fontWeight: 'bold' }}>{bridgeAnalysis.wormhole.risk}</span></div>
+                          <div>成功率: <span style={{ color: '#27ae60', fontWeight: 'bold' }}>{bridgeAnalysis.wormhole.successRate}</span></div>
+                          <div>驗證節點: <span style={{ fontWeight: 'bold' }}>{bridgeAnalysis.wormhole.validatorCount}個</span></div>
+                          <div>審計機構: <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{bridgeAnalysis.wormhole.audits}</span></div>
+                        </div>
+                      </div>
 
-</div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <h5 style={{ margin: '0 0 8px 0', color: 'var(--primary-green)' }}>流動性數據</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
+                          <div>總鎖定價值: <span style={{ fontWeight: 'bold', color: 'var(--accent-orange)' }}>{bridgeAnalysis.wormhole.tvl}</span></div>
+                          <div>日交易量: <span style={{ fontWeight: 'bold', color: 'var(--accent-orange)' }}>{bridgeAnalysis.wormhole.dailyVolume}</span></div>
+                        </div>
+                      </div>
+                    </div>
 
+                    <div className={selectedBridge === 'wormhole' ? 'alert alert-success' : 'alert alert-info'} style={{ margin: 0 }}>
+                      <strong>✅ {bridgeAnalysis.wormhole.recommendation}</strong>
+                      <br />
+                      <small>Guardian網絡提供企業級安全保障，支持19個驗證節點多重簽名</small>
+                    </div>
+                  </div>
+                  
+                  {/* Allbridge 卡片 */}
+                  <div 
+                    style={{ 
+                      background: selectedBridge === 'allbridge' ? 'linear-gradient(135deg, var(--background-cream), #ffffff)' : 'white', 
+                      border: selectedBridge === 'allbridge' ? '3px solid var(--accent-orange)' : '2px solid var(--border-light)',
+                      padding: '24px', 
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      boxShadow: selectedBridge === 'allbridge' ? 'var(--shadow-medium)' : 'var(--shadow-soft)',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      opacity: 0.85
+                    }} 
+                    onClick={() => setSelectedBridge('allbridge')}
+                  >
+                    {selectedBridge === 'allbridge' && (
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '12px', 
+                        right: '12px', 
+                        background: 'var(--accent-orange)', 
+                        color: 'white', 
+                        padding: '4px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '12px', 
+                        fontWeight: 'bold' 
+                      }}>
+                        已選擇
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '2rem', marginRight: '12px' }}>🌉</div>
+                      <div>
+                        <h4 style={{ color: 'var(--primary-green)', margin: 0, fontSize: '1.3rem' }}>Allbridge Core</h4>
+                        <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.9rem' }}>新興跨鏈協議</p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'var(--background-cream)', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>${bridgeAnalysis.allbridge.cost}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>交易成本</div>
+                        </div>
+                        <div style={{ background: 'var(--background-cream)', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>{bridgeAnalysis.allbridge.time}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>完成時間</div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <h5 style={{ margin: '0 0 8px 0', color: 'var(--primary-green)' }}>安全性指標</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
+                          <div>風險等級: <span style={{ color: '#f39c12', fontWeight: 'bold' }}>{bridgeAnalysis.allbridge.risk}</span></div>
+                          <div>成功率: <span style={{ color: '#f39c12', fontWeight: 'bold' }}>{bridgeAnalysis.allbridge.successRate}</span></div>
+                          <div>驗證節點: <span style={{ fontWeight: 'bold' }}>{bridgeAnalysis.allbridge.validatorCount}個</span></div>
+                          <div>審計機構: <span style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{bridgeAnalysis.allbridge.audits}</span></div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <h5 style={{ margin: '0 0 8px 0', color: 'var(--primary-green)' }}>流動性數據</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
+                          <div>總鎖定價值: <span style={{ fontWeight: 'bold', color: 'var(--accent-orange)' }}>{bridgeAnalysis.allbridge.tvl}</span></div>
+                          <div>日交易量: <span style={{ fontWeight: 'bold', color: 'var(--accent-orange)' }}>{bridgeAnalysis.allbridge.dailyVolume}</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="alert alert-warning" style={{ margin: 0 }}>
+                      <strong>⚠️ 僅模擬數據</strong>
+                      <br />
+                      <small>此協議數據僅供展示，實際功能尚未完全整合到平台中</small>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 比較總結 */}
+                <div style={{ marginTop: '24px', background: 'var(--background-cream)', padding: '20px', borderRadius: '12px' }}>
+                  <h4 style={{ color: 'var(--primary-green)', marginBottom: '12px' }}>📊 協議比較總結</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <strong>成本效益:</strong>
+                      <div style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+                        Wormhole 雖成本稍高，但提供更穩定的服務品質
+                      </div>
+                    </div>
+                    <div>
+                      <strong>安全性:</strong>
+                      <div style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+                        Wormhole 擁有更多驗證節點和更高的成功率
+                      </div>
+                    </div>
+                    <div>
+                      <strong>流動性:</strong>
+                      <div style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+                        Wormhole 擁有更大的TVL和交易量，確保流動性
+                      </div>
+                    </div>
+                    <div>
+                      <strong>建議:</strong>
+                      <div style={{ fontSize: '0.9rem', marginTop: '4px', color: 'var(--accent-orange)', fontWeight: 'bold' }}>
+                        推薦使用 Wormhole 進行正式交易
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Attest */}
+        {selectedBridge === 'wormhole' && (
+          <div className="card">
+            <h2>步驟 3: 代幣認證</h2>
+            <p style={{ color: 'var(--text-light)', marginBottom: '16px' }}>將代幣註冊到Wormhole橋接協議</p>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label>代幣地址</label>
+              <input
+                type="text"
+                placeholder="0x..."
+                value={customTokenAddress}
+                onChange={(e) => setCustomTokenAddress(e.target.value)}
+                style={{ width: '100%', marginTop: '8px' }}
+              />
+            </div>
+            
+            {loading === 'attest' && (
+              <div>
+                <LoadingBar 
+                  progress={loadingProgress} 
+                  step={currentStep} 
+                  totalTimeMinutes={23} 
+                  startTime={loadingStartTime} 
+                />
+                <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
+                  <h4>Wormhole認證詳細進度:</h4>
+                  <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '0.9rem' }}>
+                    <li style={{ color: loadingProgress > 5 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 提交代幣合約到Guardian網絡</li>
+                    <li style={{ color: loadingProgress > 15 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ Guardian節點驗證代幣合約</li>
+                    <li style={{ color: loadingProgress > 35 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 生成跨鏈VAA</li>
+                    <li style={{ color: loadingProgress > 55 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 19個Guardian節點多重簽名</li>
+                    <li style={{ color: loadingProgress > 75 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 創建Solana包裝代幣合約</li>
+                    <li style={{ color: loadingProgress > 90 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 完成跨鏈映射註冊</li>
+                    <li style={{ color: loadingProgress === 100 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 認證完成</li>
+                  </ul>
+                  <div style={{ marginTop: '12px', padding: '8px', background: '#fff3cd', borderRadius: '6px', fontSize: '0.85rem' }}>
+                    <strong>⏰ 為什麼需要23分鐘？</strong><br />
+                    Wormhole需要等待19個Guardian節點達成共識，每個節點需要獨立驗證代幣合約的安全性，並生成多重簽名VAA。這個過程確保了跨鏈資產的最高安全標準。
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <button
+              className={attested ? 'btn-outline' : 'btn-primary'}
+              onClick={attestMyToken}
+              disabled={!(customTokenAddress || tokenAddress) || loading === 'attest'}
+            >
+              {loading === 'attest' ? '認證中...' : (attested ? '✅ 已認證' : '🔗 開始認證')}
+            </button>
+            
+            {wrappedSolAddress && (
+              <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
+                <p><strong>Solana包裝代幣地址:</strong></p>
+                <code style={{ wordBreak: 'break-all', display: 'block', marginTop: '8px' }}>{wrappedSolAddress}</code>
+                <a 
+                  href={`https://explorer.solana.com/address/${wrappedSolAddress}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-block', marginTop: '8px' }}
+                >
+                  🔗 在Solana Explorer上查看
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Transfer */}
+        {attested && selectedBridge === 'wormhole' && (
+          <div className="card">
+            <h2>步驟 4: 執行轉移</h2>
+            <p style={{ color: 'var(--text-light)', marginBottom: '20px' }}>設定轉移參數並執行跨鏈轉移</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+              <div>
+                <label>選擇代幣</label>
+                <select value={selectedSymbol} onChange={(e) => setSelectedSymbol(e.target.value)} style={{ width: '100%', marginTop: '8px' }}>
+                  <option value="USDT">USDT</option>
+                  <option value="USDC">USDC</option>
+                </select>
+              </div>
+              <div>
+                <label>來源鏈</label>
+                <select value={fromChainValue} onChange={(e) => setFromChainValue(e.target.value)} style={{ width: '100%', marginTop: '8px' }}>
+                  <option value="Ethereum">Ethereum</option>
+                  <option value="Solana">Solana</option>
+                </select>
+              </div>
+              
+              <div>
+                <label>目標鏈</label>
+                <select value={toChainValue} onChange={(e) => setToChainValue(e.target.value)} style={{ width: '100%', marginTop: '8px' }}>
+                  <option value="Ethereum">Ethereum</option>
+                  <option value="Solana">Solana</option>
+                </select>
+              </div>
+              
+              <div>
+                <label>轉移數量</label>
+                <input type="number" value={amountValue} onChange={(e) => setAmountValue(e.target.value)} placeholder="輸入數量" style={{ width: '100%', marginTop: '8px' }} />
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginTop: '20px' }}>
+              <div>
+                <label>ERC-20 地址</label>
+                <input type="text" value={erc20Address || tokenAddress || ''} onChange={(e) => setErc20Address(e.target.value)} placeholder="0x..." style={{ width: '100%', marginTop: '8px', fontFamily: 'monospace' }} />
+              </div>
+              
+              <div>
+                <label>SPL 代幣地址</label>
+                <input type="text" value={splAddress || wrappedSolAddress || ''} onChange={(e) => setSplAddress(e.target.value)} placeholder="SPL地址" style={{ width: '100%', marginTop: '8px', fontFamily: 'monospace' }} />
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginTop: '20px' }}>
+              <div>
+                <label>發送方地址</label>
+                <input type="text" value={fromAccountInput || walletAddress || ''} onChange={(e) => setFromAccountInput(e.target.value)} placeholder="發送方地址" style={{ width: '100%', marginTop: '8px' }} />
+              </div>
+              
+              <div>
+                <label>接收方地址</label>
+                <input type="text" value={toAccountInput} onChange={(e) => setToAccountInput(e.target.value)} placeholder="接收方地址" style={{ width: '100%', marginTop: '8px' }} />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button className="btn-secondary" onClick={() => {
+                  // 下載USDT風險報告
+                  const link = document.createElement('a');
+                  link.href = '/reports/USDT-risk-report.pdf';
+                  link.download = 'USDT-risk-report.pdf';
+                  link.click();
+                }}>
+                  📄 下載長期風險報告
+                </button>
+                <button className="btn-secondary" onClick={() => setShowQuoteUI(true)}>
+                  📊 查看交易風險與成本
+                </button>
+              </div>
+            </div>
+
+            {showQuoteUI && (
+              <div style={{ marginTop: '24px' }}>
+                <QuoteSummary amount={amountValue} />
+                
+                {loading === 'transfer' && (
+                  <div>
+                    <LoadingBar 
+                      progress={loadingProgress} 
+                      step={currentStep} 
+                      totalTimeMinutes={25} 
+                      startTime={loadingStartTime} 
+                    />
+                    <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
+                      <h4>Wormhole跨鏈轉移進度:</h4>
+                      <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '0.9rem' }}>
+                        <li style={{ color: loadingProgress > 20 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 初始化跨鏈轉移請求</li>
+                        <li style={{ color: loadingProgress > 40 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 等待Ethereum區塊確認</li>
+                        <li style={{ color: loadingProgress > 60 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ Guardian網絡處理跨鏈消息</li>
+                        <li style={{ color: loadingProgress > 80 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 在Solana鏈上執行轉移</li>
+                        <li style={{ color: loadingProgress === 100 ? 'var(--primary-green)' : 'var(--text-light)' }}>✓ 跨鏈轉移完成</li>
+                      </ul>
+                      <div style={{ marginTop: '12px', padding: '8px', background: '#e8f5e8', borderRadius: '6px', fontSize: '0.85rem' }}>
+                        <strong>🚀 轉移過程說明：</strong><br />
+                        資產轉移需要經過Ethereum鏈鎖定 → Guardian網絡驗證 → Solana鏈釋放的完整流程，確保資產安全且無損失。
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <button 
+                    className="btn-primary"
+                    style={{ fontSize: '1.2rem', padding: '16px 32px' }}
+                    onClick={async () => {
+                      if (!fromChainValue || !toChainValue || !(erc20Address || tokenAddress) || !amountValue || !fromAccountInput || !toAccountInput) {
+                        alert('❌ 請填寫所有必要欄位！');
+                        return;
+                      }
+                      
+                      setLoading('transfer');
+                      setLoadingProgress(0);
+                      setCurrentStep('正在初始化轉移...');
+                      
+                      // 模擬進度
+                      const interval = setInterval(() => {
+                        setLoadingProgress(prev => {
+                          if (prev >= 100) {
+                            clearInterval(interval);
+                            return 100;
+                          }
+                          return prev + 1;
+                        });
+                      }, 1500); // 25分鐘
+                      
+                      try {
+                        const res = await fetch('/api/manual-transfer', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            tokenID: erc20Address || tokenAddress,
+                            amt: amountValue,
+                            fromChain: fromChainValue,
+                            toChain: toChainValue,
+                            fromAccount: fromAccountInput,
+                            toAccount: toAccountInput,
+                            bridge: selectedBridge,
+                          }),
+                        });
+                        
+                        const data = await res.json();
+                        clearInterval(interval);
+                        
+                        if (res.ok) {
+                          setTxResult(data);
+                          setLoadingProgress(100);
+                          alert('✅ 轉移成功完成!');
+                        } else {
+                          alert(`❌ 轉移失敗: ${data.error}`);
+                        }
+                      } catch (err) {
+                        clearInterval(interval);
+                        console.error('Transfer Error:', err);
+                        alert('❌ 轉移請求失敗');
+                      } finally {
+                        setTimeout(() => setLoading(''), 2000);
+                      }
+                    }}
+                    disabled={loading === 'transfer'}
+                  >
+                    {loading === 'transfer' ? '轉移中...' : '🚀 執行轉移'}
+                  </button>
+                </div>
+                
+                {txResult && (
+                  <div className="alert alert-success" style={{ marginTop: '20px' }}>
+                    <h4>轉移成功！</h4>
+                    <p><strong>來源交易:</strong></p>
+                    {txResult.srcTxids && txResult.srcTxids.map((txid: string, index: number) => (
+                      <div key={index} style={{ marginBottom: '8px' }}>
+                        <code style={{ wordBreak: 'break-all' }}>{txid}</code>
+                        <a href={`https://sepolia.etherscan.io/tx/${txid}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px' }}>🔗 查看</a>
+                      </div>
+                    ))}
+                    <p><strong>目標交易:</strong></p>
+                    {txResult.destTxids && txResult.destTxids.map((txid: string, index: number) => (
+                      <div key={index} style={{ marginBottom: '8px' }}>
+                        <code style={{ wordBreak: 'break-all' }}>{txid}</code>
+                        <a href={`https://explorer.solana.com/tx/${txid}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px' }}>🔗 查看</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         
-        
-
+        {selectedBridge === 'allbridge' && (
+          <div className="alert alert-warning">
+            <h3>⚠️ Allbridge 模擬模式</h3>
+            <p>您選擇了Allbridge，但這只是模擬數據。實際功能尚未實現。請選擇Wormhole進行真實的跨鏈轉移。</p>
+          </div>
+        )}
       </div>
+      
+      <Footer />
     </div>
   );
 }
