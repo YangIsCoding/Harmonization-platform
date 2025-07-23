@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
     const wrapped = await tbDest.getWrappedAsset(token);
 
     return NextResponse.json({
-      txHash: tsx[0]?.txid || 'unknown',
+      attestTxHash: txid,  // Ethereum attestation tx hash
+      solanaSubmissionHash: tsx[0]?.txid || 'unknown',  // Solana submission tx hash
       wrappedTokenAddress: wrapped,
       status: 'success',
     });
