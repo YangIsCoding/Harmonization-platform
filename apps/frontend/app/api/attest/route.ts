@@ -52,6 +52,10 @@ export async function POST(req: NextRequest) {
     const txids = await signSendWait(srcChain, attestTxns, origSigner);
     const txid = txids[0]!.txid;
     console.log('📦 Attestation tx sent. Hash:', txid);
+    
+    // 立即返回 transaction hash，讓前端可以顯示
+    // 但仍需要繼續等待 VAA 生成
+    console.log('🚀 Returning immediate tx hash to frontend:', txid);
 
     const msgs = await srcChain.parseTransaction(txid);
     const vaa = await wh.getVaa(msgs[0]!, 'TokenBridge:AttestMeta', 25 * 60 * 1000);
