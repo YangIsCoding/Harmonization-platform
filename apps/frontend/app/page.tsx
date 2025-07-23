@@ -236,8 +236,6 @@ export default function Home() {
   const [fromAccountInput, setFromAccountInput] = useState('');
   const [toAccountInput, setToAccountInput] = useState('');
   const [showQuoteUI, setShowQuoteUI] = useState(false);
-  const [lookupTokenAddress, setLookupTokenAddress] = useState('');
-  const [lookupResult, setLookupResult] = useState<string | null>(null);
   const [attestationTxHash, setAttestationTxHash] = useState<string | null>(null);
 
   const LoadingBar = ({ progress, step, totalTimeMinutes, startTime }: { 
@@ -455,7 +453,19 @@ return `Estimated remaining time: ${remainingSeconds} seconds`;
     const addressToAttest = customTokenAddress || tokenAddress;
   
     if (!addressToAttest) {
-   alert('Please enter the token address or mint tokens first');
+      alert('Please enter the token address or mint tokens first');
+      return;
+    }
+
+    // 驗證地址格式
+    if (!addressToAttest.startsWith('0x') || addressToAttest.length !== 42) {
+      alert('❌ Invalid token address format!\n\nEthereum address must be 42 characters long and start with 0x\n\nExample: 0x1234567890123456789012345678901234567890');
+      return;
+    }
+
+    const hexPattern = /^0x[0-9a-fA-F]{40}$/;
+    if (!hexPattern.test(addressToAttest)) {
+      alert('❌ Invalid token address format!\n\nToken address contains invalid characters. Only hexadecimal characters (0-9, a-f, A-F) are allowed.');
       return;
     }
   
@@ -532,33 +542,149 @@ return `Estimated remaining time: ${remainingSeconds} seconds`;
   
       if (!res.ok) {
         clearInterval(progressInterval);
-       console.error('❌ Authentication error:', json);
-throw new Error(json.message || 'Authentication failed');
+        console.error('❌ Authentication error:', json);
+        
+        // 提供更詳細的錯誤訊息給用戶
+        let errorMessage = 'Authentication failed';
+        if (json.message) {
+          errorMessage = json.message;
+        } else if (json.error) {
+          errorMessage = json.error;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      // API返回成功後立即完成進度並顯示結果
-      clearInterval(progressInterval);
-      setLoadingProgress(100);
-     setCurrentStep('Token authentication completed successfully!');
-      
-      setAttested(true);
-      // 處理可能是物件的 wrappedTokenAddress
-      const wrappedAddress = typeof json.wrappedTokenAddress === 'string' 
-        ? json.wrappedTokenAddress 
-        : json.wrappedTokenAddress.address || json.wrappedTokenAddress.toString();
-      setWrappedTokenAddress(wrappedAddress);
-      setWrappedSolAddress(wrappedAddress);
-      
-      // 確保顯示transaction hash
+      // 立即顯示交易 hash，不管後續處理是否完成
       if (json.attestTxHash) {
         setAttestationTxHash(json.attestTxHash);
         console.log("Attestation tx sent: Hash:", json.attestTxHash);
       }
-     console.log("wrapped token address:", wrappedAddress);
       
-      setTimeout(() => {
-        setLoading('');
-      }, 1500);
+      // 根據狀態決定如何處理
+      if (json.status === 'success') {
+        // 完全成功，顯示所有結果
+        clearInterval(progressInterval);
+        setLoadingProgress(100);
+        
+        // 根據是否已經 attest 過來顯示不同的訊息
+        if (json.alreadyWrapped) {
+          setCurrentStep('Token already attested! Wrapped token found.');
+        } else {
+          setCurrentStep('Token authentication completed successfully!');
+        }
+        
+        setAttested(true);
+        
+        // 處理可能是物件的 wrappedTokenAddress
+        if (json.wrappedTokenAddress) {
+          const wrappedAddress = typeof json.wrappedTokenAddress === 'string' 
+            ? json.wrappedTokenAddress 
+            : json.wrappedTokenAddress.address || json.wrappedTokenAddress.toString();
+          setWrappedTokenAddress(wrappedAddress);
+          setWrappedSolAddress(wrappedAddress);
+          console.log("wrapped token address:", wrappedAddress);
+        }
+        
+        setTimeout(() => setLoading(''), json.alreadyWrapped ? 500 : 1500);
+      } else if (json.status === 'tx_submitted') {
+        // 交易已提交，開始輪詢狀態
+        setCurrentStep(json.message || 'Transaction submitted, waiting for Guardian network confirmation...');
+        
+        // 開始輪詢狀態檢查
+        const pollStatus = async () => {
+          try {
+            const statusRes = await fetch('/api/attest-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                tokenAddress: addressToAttest,
+                txHash: json.attestTxHash 
+              }),
+            });
+            
+            const statusData = await statusRes.json();
+            
+            if (statusData.status === 'completed') {
+              // 處理完成
+              clearInterval(progressInterval);
+              setLoadingProgress(100);
+              setCurrentStep('Token authentication completed successfully!');
+              setAttested(true);
+              
+              if (statusData.wrappedTokenAddress) {
+                const wrappedAddress = typeof statusData.wrappedTokenAddress === 'string' 
+                  ? statusData.wrappedTokenAddress 
+                  : statusData.wrappedTokenAddress.address || statusData.wrappedTokenAddress.toString();
+                setWrappedTokenAddress(wrappedAddress);
+                setWrappedSolAddress(wrappedAddress);
+                console.log("wrapped token address:", wrappedAddress);
+              }
+              
+              setTimeout(() => setLoading(''), 1500);
+              return true; // 停止輪詢
+            } else {
+              // 仍在處理中，更新詳細狀態
+              let message = statusData.message || 'Guardian network is still processing...';
+              let progress = loadingProgress;
+              
+              // 根據處理階段更新進度
+              if (statusData.processingStage) {
+                switch (statusData.processingStage) {
+                  case 'guardian_processing':
+                    progress = Math.max(progress, 15);
+                    message = 'Guardian network is processing transaction...';
+                    break;
+                  case 'vaa_generation':
+                    progress = Math.max(progress, 55);
+                    message = 'Guardian nodes generating VAA (Verifiable Action Approval)...';
+                    break;
+                  case 'creating_wrapped_token':
+                    progress = Math.max(progress, 85);
+                    message = 'Creating wrapped token on destination chain...';
+                    break;
+                }
+                setLoadingProgress(progress);
+              }
+              
+              setCurrentStep(message);
+              return false; // 繼續輪詢
+            }
+          } catch (error) {
+            console.error('Status polling error:', error);
+            return false; // 繼續輪詢
+          }
+        };
+        
+        // 每10秒檢查一次狀態
+        const statusInterval = setInterval(async () => {
+          const shouldStop = await pollStatus();
+          if (shouldStop) {
+            clearInterval(statusInterval);
+          }
+        }, 10000);
+        
+        // 立即檢查一次
+        pollStatus().then(shouldStop => {
+          if (shouldStop) {
+            clearInterval(statusInterval);
+          }
+        });
+        
+        // 如果有 wrapped token address，也顯示出來
+        if (json.wrappedTokenAddress) {
+          const wrappedAddress = typeof json.wrappedTokenAddress === 'string' 
+            ? json.wrappedTokenAddress 
+            : json.wrappedTokenAddress.address || json.wrappedTokenAddress.toString();
+          setWrappedTokenAddress(wrappedAddress);
+          setWrappedSolAddress(wrappedAddress);
+          setAttested(true);
+          console.log("wrapped token address:", wrappedAddress);
+        }
+      }
+      
+      // 對於成功的情況，setTimeout 已經在上面處理了
+      // 對於 tx_submitted 的情況，會通過輪詢來管理 loading 狀態
 
     } catch (err) {
       console.error(err);
@@ -1134,80 +1260,6 @@ It is recommended to use Wormhole for formal transactions
           </div>
         )}
 
-        {/* Token Lookup Tool */}
-        {walletAddress && (
-          <div className="card">
-          <h2>🔍 Token Query Tool</h2>
-<p style={{ color: 'var(--text-light)', marginBottom: '16px' }}>Enter the ERC20 address to view the corresponding Solana packaged token address</p>
-            
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <input
-                type="text"
-               placeholder="Enter ERC20 token address (0x...)"
-                value={lookupTokenAddress}
-                onChange={(e) => setLookupTokenAddress(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <button 
-                className="btn-secondary"
-                onClick={async () => {
-                  // 查詢功能 - 呼叫 API 來查找 wrapped token
-                  if (lookupTokenAddress) {
-                    try {
-                      const res = await fetch('/api/attest', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tokenAddress: lookupTokenAddress }),
-                      });
-                      
-                      const data = await res.json();
-                      
-                      if (res.ok && data.wrappedTokenAddress) {
-                        // Debug: 檢查 wrappedTokenAddress 的類型和內容
-                        console.log('API Response:', data);
-                        console.log('wrappedTokenAddress type:', typeof data.wrappedTokenAddress);
-                        console.log('wrappedTokenAddress content:', data.wrappedTokenAddress);
-                        
-                        // 處理可能是物件的 wrappedTokenAddress
-                        const wrappedAddress = typeof data.wrappedTokenAddress === 'string' 
-                          ? data.wrappedTokenAddress 
-                          : data.wrappedTokenAddress.address || data.wrappedTokenAddress.toString();
-                        
-                        console.log('Final wrappedAddress:', wrappedAddress);
-                        setLookupResult(wrappedAddress);
-                      } else {
-                        setLookupResult(null);
-                        alert('No corresponding packaged token address found. The token may not have been authenticated by Wormhole yet.');
-                      }
-                    } catch (error) {
-                      console.error('Query error:', error);
-                      setLookupResult(null);
-                      alert('Query failed, please try again later.');
-                    }
-                  }
-                }}
-                disabled={!lookupTokenAddress}
-              >
-                Search
-              </button>
-            </div>
-
-            {lookupResult && (
-              <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
-              <p><strong>Corresponding Solana packaged token address:</strong></p>
-                <code style={{ wordBreak: 'break-all', display: 'block', marginTop: '8px' }}>{lookupResult}</code>
-                <a 
-                  href={`https://explorer.solana.com/address/${lookupResult}?cluster=devnet`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'inline-block', marginTop: '8px' }}
-                >
-                  🔗 View on Solana Explorer
-                </a>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Step 3: Attest */}
         {walletAddress && (
@@ -1330,7 +1382,7 @@ Wormhole needs to wait for 19 Guardian nodes to reach a consensus, each of which
 
             {wrappedSolAddress && (
               <div style={{ marginTop: '16px', background: 'var(--background-cream)', padding: '16px', borderRadius: '8px' }}>
-              <p><strong>Solana Wrapped token address:</strong></p>
+                <p><strong>Solana Wrapped token address:</strong></p>
                 <code style={{ wordBreak: 'break-all', display: 'block', marginTop: '8px' }}>{wrappedSolAddress}</code>
                 <a 
                   href={`https://explorer.solana.com/address/${wrappedSolAddress}?cluster=devnet`}
@@ -1340,6 +1392,15 @@ Wormhole needs to wait for 19 Guardian nodes to reach a consensus, each of which
                 >
                   🔗 view on Solana Explorer
                 </a>
+                <div style={{ marginTop: '12px', padding: '8px', background: '#e8f5e8', borderRadius: '4px', fontSize: '0.85rem' }}>
+                  <strong>✅ Token has been successfully wrapped!</strong><br />
+                  This token is now available for cross-chain transfers on Solana network.
+                  {attested && (
+                    <div style={{ marginTop: '8px', color: 'var(--primary-green)', fontWeight: 'bold' }}>
+                      Ready for cross-chain transfers!
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1456,8 +1517,28 @@ link.click();
                     className="btn-primary"
                     style={{ fontSize: '1.2rem', padding: '16px 32px' }}
                     onClick={async () => {
-                      if (!fromChainValue || !toChainValue || !(erc20Address || tokenAddress) || !amountValue || !fromAccountInput || !toAccountInput) {
-                        alert('❌ Please fill in all required fields!');
+                      // 詳細檢查每個欄位
+                      console.log('驗證欄位值：', {
+                        fromChainValue,
+                        toChainValue,
+                        erc20Address,
+                        tokenAddress,
+                        amountValue,
+                        fromAccountInput,
+                        toAccountInput,
+                        selectedBridge
+                      });
+
+                      const missingFields = [];
+                      if (!fromChainValue) missingFields.push('來源鏈');
+                      if (!toChainValue) missingFields.push('目標鏈');
+                      if (!(erc20Address || tokenAddress)) missingFields.push('Token 地址');
+                      if (!amountValue) missingFields.push('轉帳數量');
+                      if (!(fromAccountInput || walletAddress)) missingFields.push('發送者地址');
+                      if (!toAccountInput) missingFields.push('接收者地址');
+
+                      if (missingFields.length > 0) {
+                        alert(`❌ 請填入以下必填欄位：\n\n${missingFields.join('\n')}`);
                         return;
                       }
                       
@@ -1490,7 +1571,7 @@ link.click();
                             amt: amountValue,
                             fromChain: fromChainValue,
                             toChain: toChainValue,
-                            fromAccount: fromAccountInput,
+                            fromAccount: fromAccountInput || walletAddress,
                             toAccount: toAccountInput,
                             bridge: selectedBridge,
                           }),
