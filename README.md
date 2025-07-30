@@ -101,12 +101,7 @@ pip install numpy arch
 ### Start Development Servers
 
 ```bash
-# Start frontend (Next.js)
-cd apps/frontend
-npm run dev
-
-# Start backend (Express.js)
-cd apps/backend
+# at root folder
 npm run dev
 ```
 
@@ -153,16 +148,6 @@ The application will be available at:
 3. Complete transfer on destination chain
 4. Verify token receipt
 
-## Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run specific app tests
-cd apps/frontend && npm test
-cd apps/backend && npm test
-```
 
 ## Deployment
 
