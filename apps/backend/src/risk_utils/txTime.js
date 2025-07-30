@@ -66,8 +66,6 @@ class TxTimeService {
 module.exports = new TxTimeService();
 
 // async function test() {
-//     process.env.ETHERSCAN_API_KEY = 'W4JKPQXGQAR1Y6FPK4GMI5SC2T22B5TEMA';
-//     process.env.ALCHEMY_API_KEY = '3oLjnDhoY3pmI_7vrZPnoh6RrBG2e8Tz';
 //     const txTime = new TxTimeService();
 
 //     console.log('Getting gas price from Alchemy...');
